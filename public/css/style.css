@@ -54,11 +54,17 @@ button{font:inherit;color:inherit}
   border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;pointer-events:none}
 
-.tip{position:fixed;z-index:50;pointer-events:none;min-width:200px;background:rgba(18,24,38,.96);border:1px solid #2c3750;
+.tip{position:fixed;z-index:50;pointer-events:none;min-width:240px;background:rgba(18,24,38,.96);border:1px solid #2c3750;
   border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.45);display:none}
 .tip .t-head{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;margin-bottom:6px}
 .tip .t-row{display:flex;justify-content:space-between;gap:16px;margin-top:3px}
 .tip .t-price{font-size:18px;font-weight:700}
+.tip .t-idx{padding:7px 0;border-top:1px solid #232c3f}
+.tip .t-name{font-size:12px;color:var(--muted);margin-bottom:2px}
+.tip .t-vals{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.tip .t-pct{font-size:15px;font-weight:700;padding:1px 7px;border-radius:6px}
+.tip .t-pct.up{background:rgba(34,197,94,.14)} .tip .t-pct.down{background:rgba(239,68,68,.14)}
+.tip .t-chg{font-size:11px;text-align:right;margin-top:1px}
 .tip .t-foot{margin-top:6px;font-size:11px;color:var(--muted)}
 
 /* ── badges ── */

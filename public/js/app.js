@@ -15,12 +15,19 @@ const marketOf = f => byId[f.id];
 const goto = m => { location.href = `country.html#${m.code}`; };
 
 function tipHTML(m) {
-  const { q, status, idxName } = info(m);
-  const cls = dirClass(q?.changePct);
+  const { q, status } = info(m);
+  // その国の主要指数をすべて表示（指数名・ポイント・前日比％）
+  const rows = m.indices.map(([sym, name]) => {
+    const x = quotes[sym] && !quotes[sym].error ? quotes[sym] : null;
+    const cls = dirClass(x?.changePct);
+    return `<div class="t-idx">
+      <div class="t-name">${esc(name)}</div>
+      <div class="t-vals"><span class="t-price num">${fmtNum(x?.price)}</span><span class="t-pct num ${cls}">${fmtPct(x?.changePct)}</span></div>
+      <div class="t-chg num ${cls}">前日比 ${fmtChg(x?.change)}</div>
+    </div>`;
+  }).join('');
   return `<div class="t-head"><span style="font-size:20px">${flag(m.code)}</span>${esc(m.name)} ${badge(status)}</div>
-    <div class="muted" style="font-size:12px">${esc(idxName)}</div>
-    <div class="t-row"><span class="t-price num">${fmtNum(q?.price)}</span><span class="num ${cls}" style="font-weight:700">${fmtPct(q?.changePct)}</span></div>
-    <div class="t-row muted num" style="font-size:12px"><span>前日比</span><span class="${cls}">${fmtChg(q?.change)}</span></div>
+    ${rows}
     <div class="t-foot">現地 ${timeIn(m.tz, q?.time, false)} 時点 · ${esc(freshness(q, status))} · クリックで詳細</div>`;
 }
 function noMarketTip(name) {
@@ -70,7 +77,8 @@ function initFlat() {
   const W = 960, H = 500;
   const svg = d3.select(el).append('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid meet');
   const g = svg.append('g');
-  const proj = d3.geoNaturalEarth1().fitExtent([[8, 8], [W - 8, H - 8]], { type: 'Sphere' });
+  // 経度150度を中心にして日本が真ん中に来るようにする
+  const proj = d3.geoNaturalEarth1().rotate([-150, 0]).fitExtent([[8, 8], [W - 8, H - 8]], { type: 'Sphere' });
   const path = d3.geoPath(proj);
   g.append('path').attr('class', 'sphere').attr('d', path({ type: 'Sphere' }));
   g.append('path').attr('class', 'graticule').attr('d', path(d3.geoGraticule10()));
