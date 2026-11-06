@@ -1,5 +1,5 @@
 import { MARKETS, REGIONS, byId } from './markets.js';
-import { fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
+import { STATIC, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const wrap = $('map-wrap'), tip = $('tip');
@@ -12,7 +12,7 @@ startClock($('clock'));
 
 const info = m => summarize(m, quotes);
 const marketOf = f => byId[f.id];
-const goto = m => { location.href = `/country.html?m=${m.code}`; };
+const goto = m => { location.href = `country.html#${m.code}`; };
 
 function tipHTML(m) {
   const { q, status, idxName } = info(m);
@@ -139,7 +139,7 @@ function renderList() {
     const items = rows.filter(r => r.m.region === reg);
     return `<div class="region"><h3>${esc(reg)}</h3>${items.map(({ m, q, status, idxName }) => {
       const cls = dirClass(q?.changePct);
-      return `<a class="row" href="/country.html?m=${m.code}">
+      return `<a class="row" href="country.html#${m.code}">
         <div class="nm"><div class="c">${flag(m.code)} ${esc(m.name)}</div><div class="i">${esc(idxName)} ${badge(status)}</div></div>
         <div class="sp">${sparkSVG(q?.spark, cls)}</div>
         <div class="px num">${fmtNum(q?.price)}</div>
@@ -154,7 +154,7 @@ async function refresh() {
     const data = await fetchQuotes();
     quotes = data.quotes;
     $('loading').hidden = true;
-    $('updated').textContent = `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', data.serverTime)}`;
+    $('updated').textContent = STATIC ? `株価は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点` : `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', data.serverTime)}`;
     refreshGlobe(); refreshFlat(); renderList();
   } catch (e) {
     $('updated').textContent = '更新に失敗しました。再試行します…';
@@ -162,7 +162,7 @@ async function refresh() {
 }
 
 (async function main() {
-  const topo = await (await fetch('/vendor/countries-110m.json')).json();
+  const topo = await (await fetch('vendor/countries-110m.json')).json();
   features = topojson.feature(topo, topo.objects.countries).features.filter(f => f.id !== '010'); // 南極を除く
   renderList();
   setMode(mode);

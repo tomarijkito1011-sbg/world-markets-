@@ -20,9 +20,32 @@ export function colorFor(pct) {
   return `rgb(${pct > 0 ? mix(UP0, UP, t) : mix(DOWN0, DOWN, t)})`;
 }
 
+// STATIC: サーバーなしで、保存済みの株価データ（data/）を表示するモード
+export const STATIC = !!window.WM_STATIC;
+const safeName = s => s.replace(/[^A-Za-z0-9]/g, '_');
+
+export async function fetchChart(symbol, range) {
+  if (STATIC) {
+    const r = await fetch(`data/c/${safeName(symbol)}.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('chart ' + r.status);
+    const d = (await r.json())[range];
+    if (!d) throw new Error('no data');
+    return d;
+  }
+  const r = await fetch(`api/chart?symbol=${encodeURIComponent(symbol)}&range=${range}`, { cache: 'no-store' });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error);
+  return d;
+}
+
 export async function fetchQuotes(symbols) {
+  if (STATIC) {
+    const r = await fetch('data/quotes.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('quotes ' + r.status);
+    return r.json();
+  }
   const q = symbols ? '?symbols=' + symbols.map(encodeURIComponent).join(',') : '';
-  const r = await fetch('/api/quotes' + q, { cache: 'no-store' });
+  const r = await fetch('api/quotes' + q, { cache: 'no-store' });
   if (!r.ok) throw new Error('quotes ' + r.status);
   return r.json();
 }
@@ -40,6 +63,7 @@ export function freshness(q, status) {
   if (!q?.time) return '';
   const lag = Math.max(0, Date.now() / 1000 - q.time);
   if (status.state !== 'open') return '終値ベース';
+  if (STATIC) return '保存時点の値';
   if (lag < 90) return 'ほぼリアルタイム';
   return `約${Math.round(lag / 60)}分遅れ`;
 }
@@ -47,7 +71,7 @@ export function freshness(q, status) {
 export function summarize(m, quotes) {
   const sym = m.indices[0][0];
   const q = quotes[sym];
-  const status = marketStatus(m, q?.time);
+  const status = statusOf(m, q?.time);
   return { m, sym, idxName: m.indices[0][1], q: q && !q.error ? q : null, status };
 }
 
@@ -58,6 +82,9 @@ export function sparkSVG(values, cls) {
   const col = cls === 'up' ? 'var(--up)' : cls === 'down' ? 'var(--down)' : 'var(--flat)';
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline fill="none" stroke="${col}" stroke-width="1.5" points="${pts}"/></svg>`;
 }
+
+// 保存データ表示中は株価の時刻が古いので、祝日の推定を行わない
+export const statusOf = (m, t) => marketStatus(m, STATIC ? null : t);
 
 export function badge(status) {
   return `<span class="badge ${status.state}">${esc(status.label)}</span>`;

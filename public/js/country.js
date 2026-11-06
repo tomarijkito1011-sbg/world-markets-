@@ -1,10 +1,12 @@
 import { MARKETS, byCode, marketStatus, tzOffset } from './markets.js';
-import { fetchQuotes, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, badge, startClock, summarize, sparkSVG, REFRESH_MS } from './common.js';
+import { STATIC, statusOf, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, badge, startClock, summarize, sparkSVG, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const m = byCode[(params.get('m') || '').toUpperCase()];
-if (!m) location.replace('/');
+const code = (location.hash.slice(1) || params.get('m') || '').toUpperCase();
+const m = byCode[code];
+if (!m) location.replace('index.html');
+addEventListener('hashchange', () => location.reload());
 
 let symbol = m.indices.some(i => i[0] === params.get('s')) ? params.get('s') : m.indices[0][0];
 let range = ['1d', '5d', '1mo', '1y', '5y'].includes(params.get('r')) ? params.get('r') : '1d';
@@ -32,7 +34,7 @@ setInterval(() => { $('localtime').textContent = dateTimeIn(m.tz); renderStatus(
 $('localtime').textContent = dateTimeIn(m.tz);
 
 function renderStatus() {
-  const st = marketStatus(m, quotes[m.indices[0][0]]?.time);
+  const st = statusOf(m, quotes[m.indices[0][0]]?.time);
   $('status').innerHTML = badge(st);
   return st;
 }
@@ -45,10 +47,7 @@ function renderTabs() {
 function selectSymbol(s) {
   symbol = s; syncURL(); renderTabs(); renderQuote(); renderOthers(); loadChart();
 }
-function syncURL() {
-  const u = new URL(location.href); u.searchParams.set('m', m.code); u.searchParams.set('s', symbol); u.searchParams.set('r', range);
-  history.replaceState(null, '', u);
-}
+function syncURL() {}
 
 // ── 株価 ──
 function renderQuote() {
@@ -69,8 +68,8 @@ function renderQuote() {
 }
 
 function miniCard(mk, s, name, linkSelf) {
-  const q = quotes[s]; const cls = dirClass(q?.changePct); const st = marketStatus(mk, quotes[mk.indices[0][0]]?.time);
-  const href = linkSelf ? '#' : `/country.html?m=${mk.code}`;
+  const q = quotes[s]; const cls = dirClass(q?.changePct); const st = statusOf(mk, quotes[mk.indices[0][0]]?.time);
+  const href = linkSelf ? '#' + m.code : `country.html#${mk.code}`;
   return `<a class="mini ${linkSelf && s === symbol ? 'sel' : ''}" href="${href}" data-s="${esc(s)}">
     <div class="h"><span>${linkSelf ? '' : flag(mk.code) + ' '}${esc(linkSelf ? name : mk.name)}</span>${badge(st)}</div>
     <div class="s">${esc(linkSelf ? s : name)}</div>
@@ -90,7 +89,7 @@ async function refreshQuotes() {
   try {
     const d = await fetchQuotes(syms);
     quotes = d.quotes;
-    $('updated').textContent = `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', d.serverTime)}`;
+    $('updated').textContent = STATIC ? `株価は ${dateTimeIn('Asia/Tokyo', new Date(d.serverTime * 1000))} 時点` : `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', d.serverTime)}`;
     renderQuote(); renderOthers();
     updateLastPoint();
   } catch { $('updated').textContent = '更新に失敗しました。再試行します…'; }
@@ -120,10 +119,8 @@ async function loadChart(silent = false) {
   $('chart-title').textContent = `${idxName(symbol)} · ${RANGE_LABEL[range]}`;
   if (!silent) { $('chart-msg').hidden = false; $('chart-msg').textContent = 'チャートを読み込み中…'; }
   try {
-    const r = await fetch(`/api/chart?symbol=${encodeURIComponent(symbol)}&range=${range}`, { cache: 'no-store' });
-    const d = await r.json();
+    const d = await fetchChart(symbol, range);
     if (req !== chartReq) return;
-    if (!r.ok) throw new Error(d.error);
     chartOffset = d.gmtoffset;
     chartData = d.points.map(([t, v]) => ({ time: t + chartOffset, value: v }));
     // 同じ時刻が重なる場合は後の値を使う
@@ -156,7 +153,7 @@ async function loadChart(silent = false) {
 // 1日チャートの最新点を株価に合わせて更新
 function updateLastPoint() {
   const q = quotes[symbol];
-  if (range !== '1d' || !q?.time || !chartData.length || marketStatus(m, q.time).state !== 'open') return;
+  if (range !== '1d' || !q?.time || !chartData.length || statusOf(m, q.time).state !== 'open') return;
   const t = q.time + chartOffset;
   const last = chartData.at(-1);
   if (t >= last.time) { const p = { time: t, value: q.price }; if (t === last.time) chartData[chartData.length - 1] = p; else chartData.push(p); series.update(p); }
@@ -174,4 +171,4 @@ $('ranges').querySelectorAll('button').forEach(b => {
 renderTabs(); renderStatus(); renderOthers();
 refreshQuotes().then(() => loadChart());
 setInterval(() => { if (!document.hidden) refreshQuotes(); }, REFRESH_MS);
-setInterval(() => { if (!document.hidden && range === '1d' && marketStatus(m, quotes[symbol]?.time).state === 'open') loadChart(true); }, 60_000);
+setInterval(() => { if (!document.hidden && range === '1d' && statusOf(m, quotes[symbol]?.time).state === 'open') loadChart(true); }, 60_000);

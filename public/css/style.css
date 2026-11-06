@@ -2,7 +2,7 @@
 :root{
   --bg:#0a0e16; --panel:#121826; --panel-2:#171f30; --line:#232c3f; --text:#e6ebf3; --muted:#8c97ab;
   --up:#22c55e; --down:#ef4444; --flat:#9aa4b2; --accent:#4c8dff; --amber:#f59e0b;
-  --radius:14px; font-synthesis:none;
+  --radius:14px; font-synthesis:none; color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);
@@ -14,7 +14,7 @@ button{font:inherit;color:inherit}
 .muted{color:var(--muted)}
 
 /* ── header ── */
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   padding:12px 20px;background:rgba(10,14,22,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:.2px}
 .brand small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.5px}
