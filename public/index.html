@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>World Markets — 世界の株式市場</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -16,35 +19,56 @@
 <body>
 <header class="topbar">
   <a class="brand" href="index.html"><span class="logo">🌍</span><span>World Markets<small>世界の株式市場を一目で</small></span></a>
-  <div class="seg" role="tablist" aria-label="地図の表示切り替え">
-    <button id="btn-globe" class="active" aria-pressed="true">🌐 3D地球儀</button>
-    <button id="btn-flat" aria-pressed="false">🗺️ 平面地図</button>
-  </div>
   <div class="spacer"></div>
   <div class="clock"><div id="clock"></div><div><span class="live-dot"></span><span id="updated">読み込み中…</span></div></div>
 </header>
 <nav class="mnav" id="mnav" aria-label="投資対象の切り替え"></nav>
-<div class="ticker" id="ticker" aria-label="主な価格"></div>
 
-<section class="map-wrap" id="map-wrap">
-  <div id="globe"></div>
-  <div id="flat" hidden></div>
-  <div class="loading" id="loading">株価を読み込み中…</div>
-  <div class="legend">
-    前日比
-    <div class="bar"></div>
-    <div class="ticks num"><span>−3%</span><span>0</span><span>+3%</span></div>
+<section class="stage">
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="panel">
+    <div class="eyebrow"><span class="live-dot"></span>Global Market Pulse</div>
+    <h1><span class="nw">世界の相場を、</span><br><em class="nw">ひと目で。</em></h1>
+    <p class="lead">40の国と地域の株価指数を、前日比で色分けしました。国にマウスを乗せると指数、押すと詳しいチャートが見られます。</p>
+    <div class="seg" role="group" aria-label="地図の表示切り替え">
+      <button id="btn-globe" class="active" aria-pressed="true">🌐 3D地球儀</button>
+      <button id="btn-flat" aria-pressed="false">🗺️ 平面地図</button>
+    </div>
+    <div class="pulse">
+      <div>
+        <div class="k">世界の平均（各国の代表指数）</div>
+        <div class="avg"><b id="avg" class="mono">—</b><span id="avg-note" class="muted" style="font-size:12px"></span></div>
+      </div>
+      <div class="breadth" id="breadth" aria-hidden="true"></div>
+      <div class="counts"><span><b class="up" id="n-up">—</b>上昇</span><span><b class="flat" id="n-flat">—</b>横ばい</span><span><b class="down" id="n-down">—</b>下落</span></div>
+      <div class="openline" id="openline"></div>
+    </div>
+    <div class="legend">
+      前日比の色
+      <div class="bar"></div>
+      <div class="ticks num"><span>−3%</span><span>0</span><span>+3%</span></div>
+    </div>
   </div>
-  <div class="hint" id="hint">ドラッグで回転・ホイールで拡大 ／ 国をクリックで詳細</div>
+  <div class="map-wrap" id="map-wrap">
+    <div id="globe"></div>
+    <div id="flat" hidden></div>
+    <div class="loading" id="loading">株価を読み込み中…</div>
+    <div class="hint" id="hint">ドラッグで回転・ホイールで拡大 ／ 国をクリックで詳細</div>
+  </div>
 </section>
 
 <main class="container">
-  <div class="summary" id="summary"></div>
-  <h2 class="sec">市場一覧 <span class="count" id="count"></span></h2>
+  <div class="section-head"><h2>マーケット別に見る</h2><p>株以外の相場も、ここから見られます</p></div>
+  <div class="cats" id="cats"></div>
+
+  <div class="section-head"><h2>きょうの値動きランキング</h2><p>各国の代表指数の前日比</p></div>
+  <div class="ranks" id="ranks"></div>
+
+  <div class="section-head" id="list-head"><h2>世界の株価指数</h2><p id="count"></p></div>
   <div class="region-grid" id="list"></div>
   <p class="foot">
-    株価データ: Yahoo Finance（非公式取得）。開場中の市場は約15秒ごとに自動更新します。市場によっては数分〜20分程度遅れることがあります。<br>
-    TOPIXは指数を直接取得できないため、連動ETF（1306）の値動きで表示しています。祝日の休場は、株価の更新状況から推定しています。<br>
+    データ: Yahoo Finance（非公式取得）。開場中の市場は約15秒ごとに自動更新します。市場によっては数分〜20分程度遅れることがあります。<br>
+    TOPIXなど一部の指数は、連動するETFの値動きで表示しています。祝日の休場は、株価の更新状況から推定しています。<br>
     このサイトは情報提供のみを目的としており、投資判断はご自身の責任で行ってください。
   </p>
 </main>

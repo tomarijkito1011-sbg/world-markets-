@@ -30,7 +30,7 @@ const stripPwa = s => s.replace(/<link rel="manifest"[^>]*>\n|<link rel="apple-t
 // トップページ: アーティファクトが外枠（doctype/head/body）を付けるので中身だけにする
 let index = stripPwa(await fs.readFile('public/index.html', 'utf8'));
 const title = index.match(/<title>.*?<\/title>/)[0];
-const headExtra = [...index.matchAll(/<link rel="(?:stylesheet|icon)"[^>]*>/g)].map(m => m[0]).join('\n');
+const headExtra = [...index.matchAll(/<link rel="stylesheet"[^>]*>/g)].map(m => m[0]).join('\n');
 const body = index.slice(index.indexOf('<body>') + 6, index.indexOf('</body>'));
 index = `${title.replace(/<title>.*<\/title>/, '<title>World Markets</title>')}\n${headExtra}\n${body.replace('<script type="module"', flagScript + '\n<script type="module"')}`;
 await fs.writeFile(path.join(OUT, 'index.html'), index);

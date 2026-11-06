@@ -103,11 +103,13 @@ const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 const toMin = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
 
 // 指定タイムゾーンの曜日・分・時刻文字列
+const fmtCache = {};
 export function localParts(tz, date = new Date()) {
-  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+  const f = fmtCache[tz] ||= new Intl.DateTimeFormat('en-US', {
     timeZone: tz, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
-  }).formatToParts(date).map(x => [x.type, x.value]));
+  });
+  const p = Object.fromEntries(f.formatToParts(date).map(x => [x.type, x.value]));
   const h = Number(p.hour) % 24, mi = Number(p.minute);
   return { wd: WD[p.weekday], min: h * 60 + mi, y: +p.year, mo: +p.month, d: +p.day, h, mi, s: +p.second };
 }
@@ -144,7 +146,7 @@ export function marketStatus(m, quoteTime, date = new Date()) {
 // ── 株価指数以外の投資対象（トップ画面の「先物」「オプション」などの項目） ──
 // schedule: futures（CMEのほぼ24時間取引）/ fx（平日24時間）/ crypto（365日24時間）/ us（米国株の取引時間）
 export const ASSETS = [
-  { key: 'futures', name: '先物', schedule: 'futures',
+  { key: 'futures', short: '株価指数・国債の先物', about: '先物は「将来の決まった日に、今決めた価格で売買する」取引です。株式市場が閉まっている夜間も取引されるため、翌日の株価の手がかりとしてよく見られます。', headline: 'NIY=F', name: '先物', schedule: 'futures',
     desc: '株価指数・債券・通貨の先物です。主に米CMEで、平日はほぼ24時間取引されています。',
     items: [
       ['ES=F', 'S&P 500 先物（E-mini）', '株価指数先物'], ['NQ=F', 'ナスダック100 先物', '株価指数先物'], ['YM=F', 'NYダウ 先物', '株価指数先物'],
@@ -152,7 +154,7 @@ export const ASSETS = [
       ['ZT=F', '米国債2年 先物', '債券先物'], ['ZF=F', '米国債5年 先物', '債券先物'], ['ZN=F', '米国債10年 先物', '債券先物'], ['ZB=F', '米国債30年 先物', '債券先物'],
       ['6E=F', 'ユーロ 先物', '通貨先物'], ['6J=F', '日本円 先物', '通貨先物'],
     ] },
-  { key: 'options', name: 'オプション', schedule: 'us',
+  { key: 'options', short: '相場の“不安度”を見る', about: 'オプションは「決まった価格で買う・売る権利」の取引です。その価格から計算されるVIXなどの指数は、投資家がどれだけ大きな値動きを警戒しているかを表します。VIXは20以下なら落ち着き、30以上なら不安が強い目安です。', headline: '^VIX', name: 'オプション', schedule: 'us',
     desc: 'オプションの価格から計算される「予想変動率（ボラティリティ）」の指数です。値が高いほど、市場が大きな値動きを警戒していることを示します。',
     items: [
       ['^VIX', 'VIX（S&P500・30日）', '株価のボラティリティ'], ['^VIX9D', 'VIX 9日', '株価のボラティリティ'], ['^VIX3M', 'VIX 3か月', '株価のボラティリティ'],
@@ -160,7 +162,7 @@ export const ASSETS = [
       ['^VVIX', 'VVIX（VIXの変動率）', 'オプション市場の指標'], ['^SKEW', 'SKEW（急落への備え）', 'オプション市場の指標'],
       ['^OVX', '原油 ボラティリティ', '商品のボラティリティ'], ['^GVZ', '金 ボラティリティ', '商品のボラティリティ'], ['^VXSLV', '銀 ボラティリティ', '商品のボラティリティ'],
     ] },
-  { key: 'commodities', name: 'コモディティー', schedule: 'futures',
+  { key: 'commodities', short: '金・原油・穀物などの商品', about: 'コモディティーは金や原油、小麦などの「商品」です。景気やインフレ、世界情勢の影響を受けやすく、株とは違う動きをすることがあります。', headline: 'GC=F', name: 'コモディティー', schedule: 'futures',
     desc: '金・原油・穀物などの商品先物です（期近物、米ドル建て）。',
     items: [
       ['^SPGSCI', 'S&P GSCI（商品総合）', '総合'],
@@ -171,7 +173,7 @@ export const ASSETS = [
       ['KC=F', 'コーヒー', 'ソフト'], ['SB=F', '砂糖', 'ソフト'], ['CC=F', 'ココア', 'ソフト'], ['CT=F', '綿花', 'ソフト'], ['OJ=F', 'オレンジジュース', 'ソフト'],
       ['LE=F', '生牛', '畜産'], ['HE=F', '豚赤身', '畜産'],
     ] },
-  { key: 'fx', name: '為替', schedule: 'fx',
+  { key: 'fx', short: 'ドル円など通貨の交換レート', about: '為替は通貨どうしの交換レートです。「米ドル/円 158円」は1ドルを158円で交換できるという意味で、数字が上がるほど円安（ドル高）です。', headline: 'USDJPY=X', name: '為替', schedule: 'fx',
     desc: '主要通貨の為替レートです。平日は24時間取引されています。',
     items: [
       ['USDJPY=X', '米ドル/円', '対円'], ['EURJPY=X', 'ユーロ/円', '対円'], ['GBPJPY=X', '英ポンド/円', '対円'], ['AUDJPY=X', '豪ドル/円', '対円'],
@@ -181,7 +183,7 @@ export const ASSETS = [
       ['USDCHF=X', '米ドル/スイスフラン', '主要通貨ペア'], ['USDCAD=X', '米ドル/カナダドル', '主要通貨ペア'], ['USDCNY=X', '米ドル/人民元', '主要通貨ペア'], ['USDINR=X', '米ドル/インドルピー', '主要通貨ペア'],
       ['DX-Y.NYB', 'ドル指数（DXY）', '指数'],
     ] },
-  { key: 'crypto', name: '仮想通貨', schedule: 'crypto',
+  { key: 'crypto', short: 'ビットコインなどの暗号資産', about: '仮想通貨（暗号資産）はインターネット上で取引されるデジタルなお金です。土日も含めて24時間動き、値動きが大きいのが特徴です。', headline: 'BTC-USD', name: '仮想通貨', schedule: 'crypto',
     desc: '主な暗号資産の価格です。365日24時間取引されています。前日比は過去24時間ではなく、UTC 0時（日本時間 9時）からの変化です。',
     items: [
       ['BTC-USD', 'ビットコイン', '主要'], ['ETH-USD', 'イーサリアム', '主要'], ['XRP-USD', 'XRP', '主要'], ['BNB-USD', 'BNB', '主要'], ['SOL-USD', 'ソラナ', '主要'],
@@ -214,4 +216,37 @@ export function assetStatus(schedule, date = new Date()) {
   if (wd === 6 || (wd === 5 && min >= 17 * 60) || (wd === 0 && min < reopen)) return { state: 'weekend', label: '休場（週末）' };
   if (schedule === 'futures' && min >= 17 * 60 && min < 18 * 60) return { state: 'break', label: '取引休止中' };
   return { state: 'open', label: '取引中' };
+}
+
+// 各市場の取引所がある都市（地球儀の光の輪・ラベルの位置）
+export const CITY = {
+  US: [40.71, -74.01], CA: [43.65, -79.38], MX: [19.43, -99.13], BR: [-23.55, -46.63], CO: [4.71, -74.07],
+  GB: [51.51, -0.13], IE: [53.35, -6.26], DE: [50.11, 8.68], FR: [48.86, 2.35], IT: [45.46, 9.19], ES: [40.42, -3.7], PT: [38.72, -9.14],
+  NL: [52.37, 4.9], BE: [50.85, 4.35], CH: [47.37, 8.54], AT: [48.21, 16.37], SE: [59.33, 18.07], NO: [59.91, 10.75], DK: [55.68, 12.57],
+  FI: [60.17, 24.94], PL: [52.23, 21.01], TR: [41.01, 28.98], IL: [32.09, 34.78], SA: [24.71, 46.68], EG: [30.04, 31.24], ZA: [-26.2, 28.05],
+  JP: [35.68, 139.69], CN: [31.23, 121.47], HK: [22.32, 114.17], TW: [25.03, 121.57], KR: [37.57, 126.98], IN: [19.08, 72.88],
+  SG: [1.35, 103.82], MY: [3.14, 101.69], ID: [-6.21, 106.85], TH: [13.76, 100.5], PH: [14.6, 120.98], VN: [10.82, 106.63],
+  AU: [-33.87, 151.21], NZ: [-41.29, 174.78],
+};
+// 地球儀の上に騰落率を常に表示する主要市場
+export const LABELED = ['US', 'CA', 'BR', 'GB', 'DE', 'FR', 'IN', 'CN', 'HK', 'JP', 'KR', 'AU', 'ZA', 'SA', 'TW', 'MX'];
+
+// 次に取引が始まる市場（15分刻みで最大3日先まで探す）
+export function nextOpening(date = new Date()) {
+  let best = null;
+  for (const m of MARKETS) {
+    if (scheduleState(m, date).state === 'open') continue;
+    for (let k = 1; k <= 288; k++) {
+      const t = new Date(date.getTime() + k * 15 * 60000);
+      if (scheduleState(m, t).state === 'open') { if (!best || k < best.k) best = { m, k, at: t }; break; }
+      if (best && k >= best.k) break;
+    }
+  }
+  if (best) { // 1分単位で開始時刻を詰める
+    for (let mi = (best.k - 1) * 15 + 1; mi <= best.k * 15; mi++) {
+      const t = new Date(Math.floor(date.getTime() / 60000) * 60000 + mi * 60000);
+      if (scheduleState(best.m, t).state === 'open') { best.at = t; break; }
+    }
+  }
+  return best;
 }

@@ -103,9 +103,20 @@ export function startClock(el) {
 
 export { MARKETS };
 
+// 投資対象のアイコン（線画のSVG）
+const svg = d => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+export const ICONS = {
+  index: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/>'),
+  futures: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 17l3-3 2 2 3-3"/>'),
+  options: svg('<path d="M2 12h4l3-8 5 16 3-8h5"/>'),
+  commodities: svg('<path d="M3 20h18l-2.5-6h-13z"/><path d="M7 14h10l-2-5H9z"/>'),
+  fx: svg('<path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/>'),
+  crypto: svg('<circle cx="12" cy="12" r="9"/><path d="M10 7.5h3a2 2 0 0 1 0 4h-3zM10 11.5h3.5a2 2 0 0 1 0 4H10zM10 7.5v8M11.5 6v1.5M11.5 15.5V17"/>'),
+};
+
 // 画面上部の切り替えメニュー（株価指数／先物／オプション／コモディティー／為替／仮想通貨）
 export function renderNav(el, active) {
-  const items = [['index', '株価指数', 'index.html'], ...ASSETS.map(a => [a.key, a.name, `asset.html#${a.key}`])];
-  el.innerHTML = items.map(([k, n, href]) => `<a href="${href}" class="${k === active ? 'active' : ''}"${k === active ? ' aria-current="page"' : ''}>${esc(n)}</a>`).join('');
+  const items = [['index', '株価指数', 'index.html', '世界40か国の株価'], ...ASSETS.map(a => [a.key, a.name, `asset.html#${a.key}`, a.short])];
+  el.innerHTML = items.map(([k, n, href, sub]) => `<a href="${href}" class="${k === active ? 'active' : ''}"${k === active ? ' aria-current="page"' : ''} title="${esc(sub)}">${ICONS[k]}<span><b>${esc(n)}</b><small>${esc(sub)}</small></span></a>`).join('');
   try { el.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch {}
 }

@@ -1,5 +1,5 @@
 import { ASSETS, assetByKey, assetStatus, SCHEDULE_TEXT } from './markets.js';
-import { STATIC, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, esc, timeIn, dateTimeIn, badge, startClock, colorFor, renderNav, REFRESH_MS } from './common.js';
+import { STATIC, ICONS, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, esc, timeIn, dateTimeIn, badge, startClock, colorFor, renderNav, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const RANGES = ['1d', '5d', '1mo', '1y', '5y'];
@@ -30,6 +30,8 @@ function setup() {
   renderNav($('mnav'), asset.key);
   $('aname').textContent = asset.name;
   $('adesc').textContent = asset.desc;
+  const col = { futures: '#a78bfa', options: '#f59e0b', commodities: '#eab308', fx: '#2dd4bf', crypto: '#fb923c' }[asset.key];
+  $('about').innerHTML = `<div class="icon" style="background:${col}22;color:${col}">${ICONS[asset.key]}</div><div><b>${esc(asset.name)}とは？</b><p>${esc(asset.about)}</p></div>`;
   $('hours').textContent = SCHEDULE_TEXT[asset.schedule];
   quotes = {};
   renderTiles(); renderQuote(); renderStatus();
