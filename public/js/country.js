@@ -1,4 +1,4 @@
-import { MARKETS, byCode, marketStatus, tzOffset } from './markets.js';
+import { MARKETS, byCode, tzOffset, groupOf, GROUPS } from './markets.js';
 import { STATIC, statusOf, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, badge, startClock, summarize, sparkSVG, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
@@ -41,7 +41,8 @@ function renderStatus() {
 
 // ── タブ ──
 function renderTabs() {
-  $('tabs').innerHTML = m.indices.length > 1 ? m.indices.map(([s, n]) => `<button data-s="${esc(s)}" class="${s === symbol ? 'active' : ''}">${esc(n)}</button>`).join('') : '';
+  const tabIdx = m.indices.filter(i => groupOf(i) === '主要指数' || i[0] === symbol);
+  $('tabs').innerHTML = tabIdx.length > 1 ? tabIdx.map(([s, n]) => `<button data-s="${esc(s)}" class="${s === symbol ? 'active' : ''}">${esc(n)}</button>`).join('') : '';
   $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => selectSymbol(b.dataset.s));
 }
 function selectSymbol(s) {
@@ -53,7 +54,7 @@ function syncURL() {}
 function renderQuote() {
   const q = quotes[symbol];
   const st = renderStatus();
-  $('idxname').textContent = `${idxName(symbol)}（${symbol}）${q?.currency ? ' · ' + q.currency : ''}`;
+  $('idxname').textContent = `${idxName(symbol)}（${symbol}）${q?.currency ? ' · ' + q.currency : ''}${/ETF/.test(idxName(symbol)) ? ' · 指数に連動するETFの価格です' : ''}`;
   if (!q || q.error) { $('price').textContent = '—'; $('chg').textContent = q?.error ? 'データを取得できませんでした' : '—'; return; }
   const cls = dirClass(q.changePct);
   $('price').textContent = fmtNum(q.price);
@@ -71,15 +72,25 @@ function miniCard(mk, s, name, linkSelf) {
   const q = quotes[s]; const cls = dirClass(q?.changePct); const st = statusOf(mk, quotes[mk.indices[0][0]]?.time);
   const href = linkSelf ? '#' + m.code : `country.html#${mk.code}`;
   return `<a class="mini ${linkSelf && s === symbol ? 'sel' : ''}" href="${href}" data-s="${esc(s)}">
-    <div class="h"><span>${linkSelf ? '' : flag(mk.code) + ' '}${esc(linkSelf ? name : mk.name)}</span>${badge(st)}</div>
+    <div class="h"><span>${linkSelf ? '' : flag(mk.code) + ' '}${esc(linkSelf ? name : mk.name)}</span>${linkSelf ? '' : badge(st)}</div>
     <div class="s">${esc(linkSelf ? s : name)}</div>
     <div class="p"><span class="v num">${fmtNum(q?.price)}</span><span class="num ${cls}" style="font-weight:700">${fmtPct(q?.changePct)}</span></div>
     ${sparkSVG(q?.spark, cls).replace('class="spark"', 'class="spark" style="width:100%;height:28px;margin-top:6px"')}</a>`;
 }
 function renderOthers() {
-  const others = m.indices.filter(([s]) => s !== symbol);
-  $('others').innerHTML = others.length ? others.map(([s, n]) => miniCard(m, s, n, true)).join('')
-    : `<div class="empty">${esc(m.name)}で表示できる指数は現在「${esc(idxName(symbol))}」のみです。</div>`;
+  const others = m.indices.filter(([sym]) => sym !== symbol);
+  if (!others.length) {
+    $('others').innerHTML = `<div class="empty">${esc(m.name)}で表示できる指数は現在「${esc(idxName(symbol))}」のみです。</div>`;
+  } else {
+    // 分類ごとに見出しを付けて並べる
+    $('others').innerHTML = GROUPS.map(g => {
+      const items = others.filter(i => groupOf(i) === g);
+      if (!items.length) return '';
+      return `<h3 class="grp">${esc(g)} <span class="count">${items.length}</span></h3>
+        <div class="cards">${items.map(([sym, n]) => miniCard(m, sym, n, true)).join('')}</div>`;
+    }).join('');
+  }
+  $('others-count').textContent = others.length ? `${others.length}指数` : '';
   $('others').querySelectorAll('a.mini').forEach(a => a.onclick = e => { e.preventDefault(); selectSymbol(a.dataset.s); scrollTo({ top: 0, behavior: 'smooth' }); });
   $('region').innerHTML = regionMarkets.map(x => miniCard(x, x.indices[0][0], x.indices[0][1], false)).join('') || '<div class="empty">ほかの市場はありません。</div>';
 }

@@ -1,4 +1,4 @@
-import { MARKETS, REGIONS, byId } from './markets.js';
+import { MARKETS, REGIONS, byId, groupOf } from './markets.js';
 import { STATIC, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
@@ -17,7 +17,10 @@ const goto = m => { location.href = `country.html#${m.code}`; };
 function tipHTML(m) {
   const { q, status } = info(m);
   // その国の主要指数をすべて表示（指数名・ポイント・前日比％）
-  const rows = m.indices.map(([sym, name]) => {
+  // ツールチップには主要指数だけを出し、残りは件数で示す
+  const main = m.indices.filter(i => groupOf(i) === '主要指数');
+  const more = m.indices.length - main.length;
+  const rows = main.map(([sym, name]) => {
     const x = quotes[sym] && !quotes[sym].error ? quotes[sym] : null;
     const cls = dirClass(x?.changePct);
     return `<div class="t-idx">
@@ -28,6 +31,7 @@ function tipHTML(m) {
   }).join('');
   return `<div class="t-head"><span style="font-size:20px">${flag(m.code)}</span>${esc(m.name)} ${badge(status)}</div>
     ${rows}
+    ${more > 0 ? `<div class="t-more">ほか${more}指数は詳細ページで</div>` : ''}
     <div class="t-foot">現地 ${timeIn(m.tz, q?.time, false)} 時点 · ${esc(freshness(q, status))} · クリックで詳細</div>`;
 }
 function noMarketTip(name) {
