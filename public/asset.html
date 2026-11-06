@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>World Markets</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="theme-color" content="#0a0e16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="World Markets">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="index.html">← 世界地図へ戻る</a>
+  <a class="brand" href="index.html"><span class="logo">🌍</span><span>World Markets<small>世界の株式市場を一目で</small></span></a>
+  <div class="spacer"></div>
+  <div class="clock"><div id="clock"></div><div><span class="live-dot"></span><span id="updated">読み込み中…</span></div></div>
+</header>
+<nav class="mnav" id="mnav" aria-label="投資対象の切り替え"></nav>
+
+<main class="container">
+  <section class="hero">
+    <div>
+      <h1><span id="aname">—</span> <span id="status"></span></h1>
+      <div class="meta">
+        <div id="adesc"></div>
+        <div>取引時間 <b id="hours">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="tiles"></div>
+
+  <section class="card" style="margin-top:20px">
+    <div class="muted" id="idxname" style="font-size:13px;margin-bottom:8px"></div>
+    <div class="quote-head">
+      <div class="big num" id="price">—</div>
+      <div class="chg num" id="chg">—</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">前日比</div><div class="v num" id="s-chg">—</div></div>
+      <div class="stat"><div class="k">本日の高値</div><div class="v num" id="s-high">—</div></div>
+      <div class="stat"><div class="k">本日の安値</div><div class="v num" id="s-low">—</div></div>
+      <div class="stat"><div class="k">前日終値</div><div class="v num" id="s-prev">—</div></div>
+      <div class="stat"><div class="k">最終更新（日本時間）</div><div class="v num" id="s-time">—</div></div>
+      <div class="stat"><div class="k">データの鮮度</div><div class="v" id="s-fresh">—</div></div>
+    </div>
+  </section>
+
+  <section class="card chart-card">
+    <div class="chart-top">
+      <div class="title" id="chart-title">チャート</div>
+      <div class="seg" id="ranges">
+        <button data-r="1d" class="active">1日</button>
+        <button data-r="5d">1週間</button>
+        <button data-r="1mo">1か月</button>
+        <button data-r="1y">1年</button>
+        <button data-r="5y">5年</button>
+      </div>
+    </div>
+    <div id="chart"><div class="chart-msg" id="chart-msg">チャートを読み込み中…</div></div>
+    <div class="muted" id="chart-note" style="font-size:12px;margin-top:8px"></div>
+  </section>
+
+  <p class="foot">
+    データ: Yahoo Finance（非公式取得）。先物とコモディティーは期近物の価格です。チャートと時刻は日本時間です。<br>
+    このサイトは情報提供のみを目的としており、投資判断はご自身の責任で行ってください。
+  </p>
+  <a class="back" href="index.html">← 世界地図へ戻る</a>
+</main>
+
+<script src="vendor/lightweight-charts.js"></script>
+<script type="module" src="js/asset.js"></script>
+</body>
+</html>

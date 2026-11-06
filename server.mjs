@@ -6,7 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MARKETS, scheduleState } from './public/js/markets.js';
+import { MARKETS, ASSETS, scheduleState, assetStatus } from './public/js/markets.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3000;
@@ -25,6 +25,9 @@ const MIME = { '.webmanifest': 'application/manifest+json', '.html': 'text/html;
 
 const symbolMarket = {};
 for (const m of MARKETS) for (const [s] of m.indices) symbolMarket[s] = m;
+const symbolAsset = {};
+for (const a of ASSETS) for (const [s] of a.items) symbolAsset[s] = a;
+const known = s => !!(symbolMarket[s] || symbolAsset[s]);
 
 // ── Yahoo Finance ──
 async function yahooChart(symbol, range, interval) {
@@ -48,8 +51,8 @@ async function cached(key, ttl, fn) {
 }
 
 function quoteTTL(symbol) {
-  const m = symbolMarket[symbol];
-  const st = m ? scheduleState(m).state : 'open';
+  const m = symbolMarket[symbol], a = symbolAsset[symbol];
+  const st = m ? scheduleState(m).state : a ? assetStatus(a.schedule).state : 'open';
   return st === 'open' ? OPEN_TTL : CLOSED_TTL;
 }
 
@@ -112,13 +115,13 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   try {
     if (u.pathname === '/api/quotes') {
-      const syms = u.searchParams.get('symbols')?.split(',').filter(s => symbolMarket[s]) || Object.keys(symbolMarket);
-      const list = await pool(syms, 8, getQuote);
+      const syms = u.searchParams.get('symbols')?.split(',').filter(known) || Object.keys(symbolMarket);
+      const list = await pool([...new Set(syms)], 8, getQuote);
       return send(res, 200, { serverTime: Math.floor(Date.now() / 1000), quotes: Object.fromEntries(list.map(q => [q.symbol, q])) }, undefined, { 'Cache-Control': 'no-store' });
     }
     if (u.pathname === '/api/chart') {
       const s = u.searchParams.get('symbol'), r = u.searchParams.get('range') || '1d';
-      if (!symbolMarket[s] || !RANGES[r]) return send(res, 400, { error: 'bad params' });
+      if (!known(s) || !RANGES[r]) return send(res, 400, { error: 'bad params' });
       return send(res, 200, await getChart(s, r), undefined, { 'Cache-Control': 'no-store' });
     }
     if (u.pathname.startsWith('/vendor/')) {

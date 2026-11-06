@@ -1,10 +1,13 @@
-import { MARKETS, marketStatus, localParts } from './markets.js';
+import { MARKETS, ASSETS, marketStatus, localParts } from './markets.js';
 
 export const REFRESH_MS = 15_000;
 
-const nf2 = new Intl.NumberFormat('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-export const fmtNum = v => v == null || isNaN(v) ? '—' : nf2.format(v);
-export const fmtChg = v => v == null || isNaN(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '±') + nf2.format(Math.abs(v));
+const nfCache = {};
+const nf = dp => nfCache[dp] ||= new Intl.NumberFormat('ja-JP', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+// 小数の桁数: 指定がなければ値の大きさに合わせる（1未満は桁を増やす）
+export const autoDp = v => { const a = Math.abs(v); return a >= 10 ? 2 : a >= 1 ? 4 : a >= 0.01 ? 5 : a > 0 ? Math.min(10, 3 - Math.floor(Math.log10(a))) : 2; };
+export const fmtNum = (v, dp) => v == null || isNaN(v) ? '—' : nf(dp ?? autoDp(v)).format(v);
+export const fmtChg = (v, dp) => v == null || isNaN(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '±') + nf(dp ?? autoDp(v)).format(Math.abs(v));
 export const fmtPct = v => v == null || isNaN(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(2) + '%';
 export const dirClass = v => v == null || isNaN(v) ? 'flat' : v > 0.0001 ? 'up' : v < -0.0001 ? 'down' : 'flat';
 export const flag = code => String.fromCodePoint(...[...code].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
@@ -99,3 +102,10 @@ export function startClock(el) {
 }
 
 export { MARKETS };
+
+// 画面上部の切り替えメニュー（株価指数／先物／オプション／コモディティー／為替／仮想通貨）
+export function renderNav(el, active) {
+  const items = [['index', '株価指数', 'index.html'], ...ASSETS.map(a => [a.key, a.name, `asset.html#${a.key}`])];
+  el.innerHTML = items.map(([k, n, href]) => `<a href="${href}" class="${k === active ? 'active' : ''}"${k === active ? ' aria-current="page"' : ''}>${esc(n)}</a>`).join('');
+  try { el.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch {}
+}

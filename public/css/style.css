@@ -32,6 +32,28 @@ button{font:inherit;color:inherit}
 .seg button.active{background:var(--accent);color:#fff;font-weight:600}
 .seg button:not(.active):hover{color:var(--text)}
 
+/* ── market nav ── */
+.mnav{display:flex;gap:6px;overflow-x:auto;padding:10px 20px;border-bottom:1px solid var(--line);background:var(--bg);scrollbar-width:none}
+.mnav::-webkit-scrollbar{display:none}
+.mnav a{flex:none;padding:8px 16px;border-radius:10px;font-size:14px;font-weight:600;color:var(--muted);border:1px solid var(--line);background:var(--panel)}
+.mnav a:hover{color:var(--text);border-color:#34405a}
+.mnav a.active{color:#fff;background:var(--accent);border-color:var(--accent)}
+.mnav a:focus-visible,.tile:focus-visible,.tick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ticker{display:flex;gap:8px;overflow-x:auto;padding:10px 20px;border-bottom:1px solid var(--line);scrollbar-width:none}
+.ticker::-webkit-scrollbar{display:none}
+.tick{flex:none;display:flex;gap:10px;align-items:baseline;padding:6px 12px;border-radius:9px;background:var(--panel);border:1px solid var(--line);font-size:12px}
+.tick:hover{border-color:#34405a}
+.tick .n{color:var(--muted)} .tick .v{font-weight:600;font-size:13px} .tick .p{font-weight:700}
+
+/* ── asset tiles ── */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.tile{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:10px;cursor:pointer;border:2px solid transparent;color:#fff;min-width:0;text-align:left}
+.tile .n{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.95}
+.tile .v{font-size:15px;font-weight:700}
+.tile .p{font-size:13px;font-weight:700}
+.tile.sel{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+.tile:hover{filter:brightness(1.12)}
+
 /* ── map ── */
 .map-wrap{position:relative;height:min(72vh,760px);min-height:380px;overflow:hidden;
   background:radial-gradient(ellipse at 50% 45%,#0f1a2e 0%,#0a0e16 70%);border-bottom:1px solid var(--line)}

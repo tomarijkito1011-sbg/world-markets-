@@ -1,5 +1,5 @@
-import { MARKETS, REGIONS, byId, groupOf } from './markets.js';
-import { STATIC, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
+import { MARKETS, REGIONS, byId, groupOf, allSymbols, ASSETS } from './markets.js';
+import { STATIC, renderNav, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const wrap = $('map-wrap'), tip = $('tip');
@@ -9,6 +9,19 @@ let mode = 'globe';
 try { mode = localStorage.getItem('wm-map-mode') || 'globe'; } catch {}
 
 startClock($('clock'));
+renderNav($('mnav'), 'index');
+
+// 地図の上に並べる主な価格（クリックで各ページへ）
+const TICKER = [['futures', 'NIY=F', '日経先物'], ['futures', 'ES=F', 'S&P先物'], ['fx', 'USDJPY=X', 'ドル/円'], ['fx', 'EURJPY=X', 'ユーロ/円'],
+  ['commodities', 'GC=F', '金'], ['commodities', 'CL=F', 'WTI原油'], ['crypto', 'BTC-USD', 'ビットコイン'], ['options', '^VIX', 'VIX']];
+function renderTicker() {
+  $('ticker').innerHTML = TICKER.map(([k, s, n]) => {
+    const q = quotes[s] && !quotes[s].error ? quotes[s] : null, cls = dirClass(q?.changePct);
+    const dpv = k === 'fx' ? 3 : undefined;
+    return `<a class="tick" href="asset.html#${k}/${encodeURIComponent(s)}"><span class="n">${esc(n)}</span><span class="v num">${fmtNum(q?.price, dpv)}</span><span class="p num ${cls}">${fmtPct(q?.changePct)}</span></a>`;
+  }).join('');
+}
+renderTicker();
 
 const info = m => summarize(m, quotes);
 const marketOf = f => byId[f.id];
@@ -163,11 +176,11 @@ function renderList() {
 // ── データ更新 ──
 async function refresh() {
   try {
-    const data = await fetchQuotes();
+    const data = await fetchQuotes([...allSymbols(), ...TICKER.map(t => t[1])]);
     quotes = data.quotes;
     $('loading').hidden = true;
     $('updated').textContent = STATIC ? `株価は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点` : `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', data.serverTime)}`;
-    refreshGlobe(); refreshFlat(); renderList();
+    refreshGlobe(); refreshFlat(); renderList(); renderTicker();
   } catch (e) {
     $('updated').textContent = '更新に失敗しました。再試行します…';
   }

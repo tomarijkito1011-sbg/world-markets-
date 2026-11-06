@@ -140,3 +140,78 @@ export function marketStatus(m, quoteTime, date = new Date()) {
   const labels = { open: '開場中', break: '昼休み', pre: '開場前', after: '取引終了', weekend: '休場（週末）' };
   return { state: s.state, label: labels[s.state] };
 }
+
+// ── 株価指数以外の投資対象（トップ画面の「先物」「オプション」などの項目） ──
+// schedule: futures（CMEのほぼ24時間取引）/ fx（平日24時間）/ crypto（365日24時間）/ us（米国株の取引時間）
+export const ASSETS = [
+  { key: 'futures', name: '先物', schedule: 'futures',
+    desc: '株価指数・債券・通貨の先物です。主に米CMEで、平日はほぼ24時間取引されています。',
+    items: [
+      ['ES=F', 'S&P 500 先物（E-mini）', '株価指数先物'], ['NQ=F', 'ナスダック100 先物', '株価指数先物'], ['YM=F', 'NYダウ 先物', '株価指数先物'],
+      ['RTY=F', 'ラッセル2000 先物', '株価指数先物'], ['NIY=F', '日経225 先物（CME・円建て）', '株価指数先物'], ['NKD=F', '日経225 先物（CME・ドル建て）', '株価指数先物'],
+      ['ZT=F', '米国債2年 先物', '債券先物'], ['ZF=F', '米国債5年 先物', '債券先物'], ['ZN=F', '米国債10年 先物', '債券先物'], ['ZB=F', '米国債30年 先物', '債券先物'],
+      ['6E=F', 'ユーロ 先物', '通貨先物'], ['6J=F', '日本円 先物', '通貨先物'],
+    ] },
+  { key: 'options', name: 'オプション', schedule: 'us',
+    desc: 'オプションの価格から計算される「予想変動率（ボラティリティ）」の指数です。値が高いほど、市場が大きな値動きを警戒していることを示します。',
+    items: [
+      ['^VIX', 'VIX（S&P500・30日）', '株価のボラティリティ'], ['^VIX9D', 'VIX 9日', '株価のボラティリティ'], ['^VIX3M', 'VIX 3か月', '株価のボラティリティ'],
+      ['^VXN', 'ナスダック100 ボラティリティ', '株価のボラティリティ'], ['^VXD', 'NYダウ ボラティリティ', '株価のボラティリティ'], ['^VXEEM', '新興国株 ボラティリティ', '株価のボラティリティ'],
+      ['^VVIX', 'VVIX（VIXの変動率）', 'オプション市場の指標'], ['^SKEW', 'SKEW（急落への備え）', 'オプション市場の指標'],
+      ['^OVX', '原油 ボラティリティ', '商品のボラティリティ'], ['^GVZ', '金 ボラティリティ', '商品のボラティリティ'], ['^VXSLV', '銀 ボラティリティ', '商品のボラティリティ'],
+    ] },
+  { key: 'commodities', name: 'コモディティー', schedule: 'futures',
+    desc: '金・原油・穀物などの商品先物です（期近物、米ドル建て）。',
+    items: [
+      ['^SPGSCI', 'S&P GSCI（商品総合）', '総合'],
+      ['GC=F', '金', '貴金属'], ['SI=F', '銀', '貴金属'], ['PL=F', 'プラチナ', '貴金属'], ['PA=F', 'パラジウム', '貴金属'],
+      ['HG=F', '銅', '非鉄金属'], ['ALI=F', 'アルミニウム', '非鉄金属'],
+      ['CL=F', 'WTI原油', 'エネルギー'], ['BZ=F', '北海ブレント原油', 'エネルギー'], ['NG=F', '天然ガス', 'エネルギー'], ['RB=F', 'ガソリン', 'エネルギー'], ['HO=F', 'ヒーティングオイル', 'エネルギー'],
+      ['ZC=F', 'トウモロコシ', '穀物'], ['ZW=F', '小麦', '穀物'], ['ZS=F', '大豆', '穀物'],
+      ['KC=F', 'コーヒー', 'ソフト'], ['SB=F', '砂糖', 'ソフト'], ['CC=F', 'ココア', 'ソフト'], ['CT=F', '綿花', 'ソフト'], ['OJ=F', 'オレンジジュース', 'ソフト'],
+      ['LE=F', '生牛', '畜産'], ['HE=F', '豚赤身', '畜産'],
+    ] },
+  { key: 'fx', name: '為替', schedule: 'fx',
+    desc: '主要通貨の為替レートです。平日は24時間取引されています。',
+    items: [
+      ['USDJPY=X', '米ドル/円', '対円'], ['EURJPY=X', 'ユーロ/円', '対円'], ['GBPJPY=X', '英ポンド/円', '対円'], ['AUDJPY=X', '豪ドル/円', '対円'],
+      ['NZDJPY=X', 'NZドル/円', '対円'], ['CADJPY=X', 'カナダドル/円', '対円'], ['CHFJPY=X', 'スイスフラン/円', '対円'], ['CNYJPY=X', '人民元/円', '対円'],
+      ['KRWJPY=X', '韓国ウォン/円', '対円'], ['INRJPY=X', 'インドルピー/円', '対円'], ['MXNJPY=X', 'メキシコペソ/円', '対円'], ['TRYJPY=X', 'トルコリラ/円', '対円'], ['ZARJPY=X', '南アランド/円', '対円'],
+      ['EURUSD=X', 'ユーロ/米ドル', '主要通貨ペア'], ['GBPUSD=X', '英ポンド/米ドル', '主要通貨ペア'], ['AUDUSD=X', '豪ドル/米ドル', '主要通貨ペア'],
+      ['USDCHF=X', '米ドル/スイスフラン', '主要通貨ペア'], ['USDCAD=X', '米ドル/カナダドル', '主要通貨ペア'], ['USDCNY=X', '米ドル/人民元', '主要通貨ペア'], ['USDINR=X', '米ドル/インドルピー', '主要通貨ペア'],
+      ['DX-Y.NYB', 'ドル指数（DXY）', '指数'],
+    ] },
+  { key: 'crypto', name: '仮想通貨', schedule: 'crypto',
+    desc: '主な暗号資産の価格です。365日24時間取引されています。前日比は過去24時間ではなく、UTC 0時（日本時間 9時）からの変化です。',
+    items: [
+      ['BTC-USD', 'ビットコイン', '主要'], ['ETH-USD', 'イーサリアム', '主要'], ['XRP-USD', 'XRP', '主要'], ['BNB-USD', 'BNB', '主要'], ['SOL-USD', 'ソラナ', '主要'],
+      ['DOGE-USD', 'ドージコイン', 'アルトコイン'], ['ADA-USD', 'カルダノ', 'アルトコイン'], ['TRX-USD', 'トロン', 'アルトコイン'], ['AVAX-USD', 'アバランチ', 'アルトコイン'],
+      ['LINK-USD', 'チェーンリンク', 'アルトコイン'], ['DOT-USD', 'ポルカドット', 'アルトコイン'], ['LTC-USD', 'ライトコイン', 'アルトコイン'], ['BCH-USD', 'ビットコインキャッシュ', 'アルトコイン'], ['SHIB-USD', '柴犬コイン', 'アルトコイン'],
+      ['USDT-USD', 'テザー（USDT）', 'ステーブルコイン'],
+      ['BTC-JPY', 'ビットコイン（円建て）', '円建て'], ['ETH-JPY', 'イーサリアム（円建て）', '円建て'],
+    ] },
+];
+export const assetByKey = Object.fromEntries(ASSETS.map(a => [a.key, a]));
+export const assetSymbols = () => [...new Set(ASSETS.flatMap(a => a.items.map(i => i[0])))];
+
+// 取引時間の説明
+export const SCHEDULE_TEXT = {
+  futures: '日曜18:00〜金曜17:00（ニューヨーク時間）。毎日17:00〜18:00は休止',
+  fx: '月曜早朝〜土曜早朝（日本時間）の平日24時間',
+  crypto: '365日24時間',
+  us: '平日 9:30〜16:15（ニューヨーク時間）',
+};
+
+// 投資対象ごとの取引状態
+export function assetStatus(schedule, date = new Date()) {
+  if (schedule === 'crypto') return { state: 'open', label: '24時間取引' };
+  if (schedule === 'us') {
+    const s = scheduleState({ tz: 'America/New_York', sessions: [['09:30', '16:15']] }, date).state;
+    return { state: s === 'open' ? 'open' : s === 'weekend' ? 'weekend' : 'after', label: s === 'open' ? '取引中' : s === 'weekend' ? '休場（週末）' : '取引時間外' };
+  }
+  const { wd, min } = localParts('America/New_York', date);
+  const reopen = schedule === 'futures' ? 18 * 60 : 17 * 60;
+  if (wd === 6 || (wd === 5 && min >= 17 * 60) || (wd === 0 && min < reopen)) return { state: 'weekend', label: '休場（週末）' };
+  if (schedule === 'futures' && min >= 17 * 60 && min < 18 * 60) return { state: 'break', label: '取引休止中' };
+  return { state: 'open', label: '取引中' };
+}

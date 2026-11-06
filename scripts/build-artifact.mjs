@@ -2,7 +2,7 @@
 // 使い方: サーバーを起動した状態で  node scripts/build-artifact.mjs
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { MARKETS } from '../public/js/markets.js';
+import { MARKETS, allSymbols, assetSymbols } from '../public/js/markets.js';
 
 const BASE = process.env.WM_SERVER || 'http://localhost:3000';
 const OUT = 'dist-artifact';
@@ -34,15 +34,17 @@ const headExtra = [...index.matchAll(/<link rel="(?:stylesheet|icon)"[^>]*>/g)].
 const body = index.slice(index.indexOf('<body>') + 6, index.indexOf('</body>'));
 index = `${title.replace(/<title>.*<\/title>/, '<title>World Markets</title>')}\n${headExtra}\n${body.replace('<script type="module"', flagScript + '\n<script type="module"')}`;
 await fs.writeFile(path.join(OUT, 'index.html'), index);
-let country = stripPwa(await fs.readFile('public/country.html', 'utf8'));
-country = country.replace('<script type="module"', flagScript + '\n<script type="module"');
-await fs.writeFile(path.join(OUT, 'country.html'), country);
+for (const page of ['country.html', 'asset.html']) {
+  const html = stripPwa(await fs.readFile('public/' + page, 'utf8')).replace('<script type="module"', flagScript + '\n<script type="module"');
+  await fs.writeFile(path.join(OUT, page), html);
+}
 
 // 株価データ
-const quotes = await get('/api/quotes');
+const syms = [...new Set([...allSymbols(), ...assetSymbols()])];
+const quotes = await get('/api/quotes?symbols=' + syms.map(encodeURIComponent).join(','));
 await fs.writeFile(path.join(OUT, 'data/quotes.json'), JSON.stringify(quotes));
 let n = 0;
-for (const m of MARKETS) for (const [sym] of m.indices) {
+for (const sym of syms) {
   const all = {};
   for (const r of RANGES) {
     try { all[r] = await get(`/api/chart?symbol=${encodeURIComponent(sym)}&range=${r}`); } catch (e) { console.warn('skip', sym, r, e.message); }
