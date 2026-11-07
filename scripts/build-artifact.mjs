@@ -52,4 +52,13 @@ for (const sym of syms) {
   await fs.writeFile(path.join(OUT, 'data/c', safe(sym) + '.json'), JSON.stringify(all));
   n++;
 }
+// 構成銘柄（価格・時価総額付き）
+await fs.mkdir(path.join(OUT, 'data/k'), { recursive: true });
+let k = 0;
+for (const f of await fs.readdir('public/data/constituents').catch(() => [])) {
+  const { index } = JSON.parse(await fs.readFile(path.join('public/data/constituents', f), 'utf8'));
+  try { await fs.writeFile(path.join(OUT, 'data/k', safe(index) + '.json'), JSON.stringify(await get('/api/constituents?index=' + encodeURIComponent(index)))); k++; }
+  catch (e) { console.warn('skip constituents', index, e.message); }
+}
+console.log(`constituents: ${k} indices`);
 console.log(`built ${OUT}: ${n} charts, quotes at ${new Date(quotes.serverTime * 1000).toISOString()}`);

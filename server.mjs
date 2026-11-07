@@ -98,6 +98,65 @@ async function getChart(symbol, range) {
   });
 }
 
+// ── 指数の構成銘柄 ──
+// 銘柄リストは public/data/constituents/<記号>.json（scripts/fetch-constituents.mjs で作成）
+const safeName = s => s.replace(/[^A-Za-z0-9]/g, '_');
+async function loadList(index) {
+  return cached('list:' + index, 3600_000, async () => JSON.parse(await fs.readFile(path.join(ROOT, 'public/data/constituents', safeName(index) + '.json'), 'utf8')));
+}
+// 複数銘柄の価格を一度に取得（spark は1回に最大20銘柄）
+async function sparkBatch(symbols) {
+  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbols.map(encodeURIComponent).join(',')}&range=1d&interval=1d`;
+  const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
+  const j = await r.json();
+  const out = {};
+  for (const it of j?.spark?.result || []) {
+    const m = it.response?.[0]?.meta; if (!m) continue;
+    out[it.symbol] = { price: m.regularMarketPrice, prev: m.previousClose ?? m.chartPreviousClose, high: m.regularMarketDayHigh, low: m.regularMarketDayLow,
+      currency: m.currency, time: m.regularMarketTime, name: m.longName || m.shortName };
+  }
+  return out;
+}
+// 発行済株式数（四半期→年次の順に最新値）。1日キャッシュ
+async function getShares(symbol) {
+  return cached('sh:' + symbol, 24 * 3600_000, async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const url = `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}?type=quarterlyOrdinarySharesNumber,annualOrdinarySharesNumber&period1=${now - 3 * 365 * 86400}&period2=${now}`;
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
+    const j = await r.json();
+    let best = null;
+    for (const res of j?.timeseries?.result || []) {
+      const t = res.meta?.type?.[0]; const arr = (res[t] || []).filter(Boolean);
+      const last = arr.at(-1); if (!last) continue;
+      if (!best || last.asOfDate > best.asOfDate) best = { asOfDate: last.asOfDate, shares: last.reportedValue.raw };
+    }
+    return best;
+  });
+}
+// 100分の1単位の通貨（ペンス・セント・アゴロト）を本来の通貨に直す
+const MINOR = { GBp: ['GBP', 100], GBX: ['GBP', 100], ZAc: ['ZAR', 100], ILA: ['ILS', 100] };
+async function getConstituents(index) {
+  const list = await loadList(index);
+  const m = symbolMarket[index];
+  const open = m ? scheduleState(m).state === 'open' : false;
+  return cached('k:' + index, open ? 20_000 : 5 * 60_000, async () => {
+    const syms = list.items.map(i => i.s);
+    const chunks = []; for (let i = 0; i < syms.length; i += 20) chunks.push(syms.slice(i, i + 20));
+    const prices = Object.assign({}, ...(await pool(chunks, 4, c => sparkBatch(c).catch(() => ({})))));
+    const shares = await pool(syms, 6, s => getShares(s).catch(() => null));
+    const rows = list.items.map((it, k) => {
+      const p = prices[it.s]; if (!p || p.price == null) return { ...it, error: true };
+      let { price, prev, high, low, currency } = p;
+      const minor = MINOR[currency];
+      if (minor) { const d = minor[1]; price /= d; prev = prev != null ? prev / d : prev; high = high != null ? high / d : high; low = low != null ? low / d : low; currency = minor[0]; }
+      const sh = shares[k]?.shares;
+      return { ...it, price, prev, change: prev ? price - prev : null, pct: prev ? (price / prev - 1) * 100 : null, high, low,
+        currency, time: p.time, mcap: sh ? sh * price : null, en: p.name };
+    });
+    return { index, name: list.name, source: list.source, asOf: list.asOf, serverTime: Math.floor(Date.now() / 1000), rows };
+  });
+}
+
 // ── HTTP ──
 function send(res, code, body, type = 'application/json; charset=utf-8', extra = {}) {
   res.writeHead(code, { 'Content-Type': type, ...extra });
@@ -118,6 +177,12 @@ const server = http.createServer(async (req, res) => {
       const syms = u.searchParams.get('symbols')?.split(',').filter(known) || Object.keys(symbolMarket);
       const list = await pool([...new Set(syms)], 8, getQuote);
       return send(res, 200, { serverTime: Math.floor(Date.now() / 1000), quotes: Object.fromEntries(list.map(q => [q.symbol, q])) }, undefined, { 'Cache-Control': 'no-store' });
+    }
+    if (u.pathname === '/api/constituents') {
+      const ix = u.searchParams.get('index');
+      if (!symbolMarket[ix]) return send(res, 400, { error: 'bad params' });
+      try { return send(res, 200, await getConstituents(ix), undefined, { 'Cache-Control': 'no-store' }); }
+      catch { return send(res, 404, { error: 'no list' }); }
     }
     if (u.pathname === '/api/chart') {
       const s = u.searchParams.get('symbol'), r = u.searchParams.get('range') || '1d';

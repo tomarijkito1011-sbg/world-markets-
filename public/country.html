@@ -68,6 +68,27 @@
     <div class="muted" id="chart-note" style="font-size:12px;margin-top:8px"></div>
   </section>
 
+  <section class="card members" id="members">
+    <div class="m-head">
+      <div><h2 class="m-title" id="m-title">構成銘柄</h2><div class="muted" id="m-sub" style="font-size:12px"></div></div>
+      <div class="m-tools">
+        <input id="m-search" type="search" placeholder="銘柄名・コードで検索" aria-label="銘柄を検索">
+        <div class="seg" id="m-sort">
+          <button data-k="mcap" class="active">時価総額順</button>
+          <button data-k="up">値上がり順</button>
+          <button data-k="down">値下がり順</button>
+          <button data-k="code">コード順</button>
+        </div>
+      </div>
+    </div>
+    <div class="m-summary" id="m-summary"></div>
+    <div class="m-table-wrap"><table class="m-table">
+      <thead><tr><th class="c-code">コード</th><th>銘柄名</th><th class="r">現在値</th><th class="r c-chg">前日比</th><th class="r">騰落率</th><th class="r">時価総額</th></tr></thead>
+      <tbody id="m-body"><tr><td colspan="6" class="muted" style="padding:20px">読み込み中…</td></tr></tbody>
+    </table></div>
+    <div class="muted" id="m-note" style="font-size:11px;margin-top:10px;line-height:1.7"></div>
+  </section>
+
   <h2 class="sec">この国のほかの指数 <span class="count" id="others-count"></span></h2>
   <div id="others"></div>
 

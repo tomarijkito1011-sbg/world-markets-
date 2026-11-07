@@ -24,3 +24,9 @@ npm start
 
 ## 注意
 株価データはYahoo Financeから非公式に取得しています。市場によっては数分〜20分程度遅れます。祝日の休場は株価の更新状況から推定しています。
+
+## 指数の構成銘柄
+- 銘柄リストは `public/data/constituents/` にあります（日経225、NYダウ、S&P500、FTSE100、DAX、CAC40、ハンセン、NIFTY50、SENSEX など17指数）
+- 作り直すとき: JPXの「東証上場銘柄一覧」(data_j.xlsx) をダウンロードして
+  `NODE_USE_ENV_PROXY=1 node scripts/fetch-constituents.mjs data_j.xlsx`
+- 時価総額は「現在値 × 直近の決算で報告された発行済株式数」の概算です

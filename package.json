@@ -16,5 +16,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "cheerio": "^1.0.0",
+    "xlsx": "^0.18.5"
   }
 }

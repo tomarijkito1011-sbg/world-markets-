@@ -41,6 +41,12 @@ export async function fetchChart(symbol, range) {
   return d;
 }
 
+export async function fetchConstituents(index) {
+  const r = await fetch(STATIC ? `data/k/${safeName(index)}.json` : `api/constituents?index=${encodeURIComponent(index)}`, { cache: 'no-store' });
+  if (!r.ok) return null;
+  return r.json();
+}
+
 export async function fetchQuotes(symbols) {
   if (STATIC) {
     const r = await fetch('data/quotes.json', { cache: 'no-store' });
@@ -119,4 +125,28 @@ export function renderNav(el, active) {
   const items = [['index', '株価指数', 'index.html', '世界40か国の株価'], ...ASSETS.map(a => [a.key, a.name, `asset.html#${a.key}`, a.short])];
   el.innerHTML = items.map(([k, n, href, sub]) => `<a href="${href}" class="${k === active ? 'active' : ''}"${k === active ? ' aria-current="page"' : ''} title="${esc(sub)}">${ICONS[k]}<span><b>${esc(n)}</b><small>${esc(sub)}</small></span></a>`).join('');
   try { el.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch {}
+}
+
+// ── 通貨の表示（その国の通貨で表示する） ──
+const CUR = {
+  JPY: ['', '円', '円'], USD: ['$', '', 'ドル'], EUR: ['€', '', 'ユーロ'], GBP: ['£', '', 'ポンド'], HKD: ['HK$', '', '香港ドル'],
+  INR: ['₹', '', 'ルピー'], CAD: ['C$', '', 'カナダドル'], AUD: ['A$', '', '豪ドル'], CHF: ['', ' CHF', 'スイスフラン'], SEK: ['', ' kr', 'スウェーデン・クローナ'],
+  SGD: ['S$', '', 'シンガポールドル'], CNY: ['', '元', '人民元'], KRW: ['₩', '', 'ウォン'], TWD: ['NT$', '', '台湾ドル'], BRL: ['R$', '', 'レアル'],
+  ZAR: ['R', '', 'ランド'], ILS: ['₪', '', 'シェケル'], NOK: ['', ' kr', 'ノルウェー・クローネ'], DKK: ['', ' kr', 'デンマーク・クローネ'], PLN: ['', ' zł', 'ズウォティ'],
+};
+export const currencyName = c => CUR[c]?.[2] || c || '';
+const moneyDp = (v, c) => c === 'JPY' || c === 'KRW' ? (Math.abs(v) % 1 > 0.001 ? 1 : 0) : 2;
+export function fmtMoney(v, c, signed = false) {
+  if (v == null || isNaN(v)) return '—';
+  const [pre, suf] = CUR[c] || ['', ' ' + (c || '')];
+  const sign = signed ? (v > 0 ? '+' : v < 0 ? '−' : '±') : v < 0 ? '−' : '';
+  return sign + pre + fmtNum(Math.abs(v), moneyDp(v, c)) + suf;
+}
+// 時価総額: 兆・億で表す（例: 41.61兆円、4.97兆ドル）
+export function fmtCap(v, c) {
+  if (v == null || isNaN(v) || v <= 0) return '—';
+  const unit = currencyName(c);
+  if (v >= 1e12) return `${(v / 1e12).toFixed(v >= 1e14 ? 1 : 2)}兆${unit}`;
+  if (v >= 1e8) return `${Math.round(v / 1e8).toLocaleString('ja-JP')}億${unit}`;
+  return `${Math.round(v / 1e4).toLocaleString('ja-JP')}万${unit}`;
 }

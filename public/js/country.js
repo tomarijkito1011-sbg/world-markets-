@@ -1,5 +1,5 @@
 import { MARKETS, byCode, tzOffset, groupOf, GROUPS } from './markets.js';
-import { STATIC, statusOf, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, badge, startClock, summarize, sparkSVG, REFRESH_MS } from './common.js';
+import { STATIC, statusOf, fetchConstituents, fmtMoney, fmtCap, currencyName, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, badge, startClock, summarize, sparkSVG, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -46,7 +46,7 @@ function renderTabs() {
   $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => selectSymbol(b.dataset.s));
 }
 function selectSymbol(s) {
-  symbol = s; syncURL(); renderTabs(); renderQuote(); renderOthers(); loadChart();
+  symbol = s; syncURL(); renderTabs(); renderQuote(); renderOthers(); loadChart(); loadMembers();
 }
 function syncURL() {}
 
@@ -183,3 +183,56 @@ renderTabs(); renderStatus(); renderOthers();
 refreshQuotes().then(() => loadChart());
 setInterval(() => { if (!document.hidden) refreshQuotes(); }, REFRESH_MS);
 setInterval(() => { if (!document.hidden && range === '1d' && statusOf(m, quotes[symbol]?.time).state === 'open') loadChart(true); }, 60_000);
+
+// ── 構成銘柄の一覧 ──
+let members = null, sortKey = 'mcap', mReq = 0;
+const yahooUrl = s => s.endsWith('.T') ? `https://finance.yahoo.co.jp/quote/${s}` : `https://finance.yahoo.com/quote/${encodeURIComponent(s)}`;
+async function loadMembers() {
+  const req = ++mReq, ix = symbol;
+  const d = await fetchConstituents(ix).catch(() => null);
+  if (req !== mReq) return;
+  members = d;
+  $('members').hidden = false;
+  if (!d) {
+    $('m-title').textContent = `${idxName(ix)}の構成銘柄`;
+    $('m-sub').textContent = '';
+    $('m-summary').innerHTML = ''; $('m-note').textContent = '';
+    $('m-body').innerHTML = `<tr><td colspan="6" class="muted" style="padding:20px;white-space:normal">この指数の構成銘柄データはまだありません。主要国の代表指数（日経平均、NYダウ、S&P500、ナスダック100、FTSE100、DAX など）で見られます。</td></tr>`;
+    return;
+  }
+  renderMembers();
+}
+function renderMembers() {
+  const d = members; if (!d) return;
+  const rows = d.rows.filter(r => !r.error);
+  const cur = rows.find(r => r.currency)?.currency;
+  $('m-title').textContent = `${d.name}の構成銘柄`;
+  $('m-sub').textContent = `${d.rows.length}銘柄 · 価格の通貨: ${currencyName(cur)}${cur ? `（${cur}）` : ''}`;
+  const up = rows.filter(r => r.pct > 0.0001).length, down = rows.filter(r => r.pct < -0.0001).length;
+  const cap = rows.reduce((a, r) => a + (r.mcap || 0), 0);
+  $('m-summary').innerHTML = `<span><b class="up">${up}</b>値上がり</span><span><b class="down">${down}</b>値下がり</span><span><b class="flat">${rows.length - up - down}</b>変わらず</span><span>時価総額の合計 <b style="color:var(--text)">${fmtCap(cap, cur)}</b></span>`;
+  const q = $('m-search').value.trim().toLowerCase();
+  let list = d.rows.filter(r => !q || (r.n || '').toLowerCase().includes(q) || (r.en || '').toLowerCase().includes(q) || r.s.toLowerCase().includes(q));
+  const by = { mcap: (a, b) => (b.mcap || 0) - (a.mcap || 0), up: (a, b) => (b.pct ?? -1e9) - (a.pct ?? -1e9), down: (a, b) => (a.pct ?? 1e9) - (b.pct ?? 1e9), code: (a, b) => a.s.localeCompare(b.s, 'ja', { numeric: true }) }[sortKey];
+  list = [...list].sort(by);
+  const code = s => s.replace(/\.(T|L|DE|PA|HK|NS|BO|TO|AX|SW|AS|MC|MI|ST|SI)$/, '');
+  $('m-body').innerHTML = list.length ? list.map(r => {
+    const cls = dirClass(r.pct);
+    const sub = [r.n && r.en && r.n !== r.en ? r.en : '', r.sector].filter(Boolean).join(' · ');
+    return `<tr><td class="c-code">${esc(code(r.s))}</td>
+      <td class="nm"><a href="${yahooUrl(r.s)}" target="_blank" rel="noopener">${esc(r.n || r.en || r.s)}</a>${sub ? `<small>${esc(sub)}</small>` : ''}</td>
+      <td class="r mono">${fmtMoney(r.price, r.currency)}<small class="m-only ${cls}">${fmtMoney(r.change, r.currency, true)}</small></td>
+      <td class="r mono c-chg ${cls}">${fmtMoney(r.change, r.currency, true)}</td>
+      <td class="r"><span class="pc ${cls}">${fmtPct(r.pct)}</span></td>
+      <td class="r mono">${fmtCap(r.mcap, r.currency)}</td></tr>`;
+  }).join('') : `<tr><td colspan="6" class="muted" style="padding:20px">「${esc(q)}」に当てはまる銘柄はありません。</td></tr>`;
+  $('m-note').innerHTML = `銘柄リストの出典: ${esc(d.source)}（${esc(d.asOf)} 時点）。時価総額は「現在値 × 直近の決算で報告された発行済株式数」で計算した概算です。銘柄名を押すと Yahoo!ファイナンスが開きます。${STATIC ? '' : ''}`;
+}
+$('m-search').addEventListener('input', renderMembers);
+$('m-sort').querySelectorAll('button').forEach(b => b.onclick = () => {
+  sortKey = b.dataset.k;
+  $('m-sort').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+  renderMembers();
+});
+loadMembers();
+setInterval(() => { if (!document.hidden && !STATIC && statusOf(m, quotes[symbol]?.time).state === 'open') loadMembers(); }, 30_000);

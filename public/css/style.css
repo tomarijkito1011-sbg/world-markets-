@@ -276,3 +276,40 @@ h2.sec .count{font-size:12px;color:var(--muted);font-weight:500}
   .cat .head{flex-direction:column;align-items:flex-start;gap:6px}
   .cat .head .v{font-size:17px}
 }
+
+/* ── 構成銘柄 ── */
+.members{margin-top:14px}
+.m-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.m-title{margin:0 0 4px;font-family:var(--display);font-weight:900;font-size:20px}
+.m-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.m-tools input{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:8px 12px;font:inherit;font-size:13px;min-width:200px}
+.m-tools input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.m-summary{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px}
+.m-summary b{font-family:var(--mono);font-size:15px;margin-right:2px}
+.m-table-wrap{max-height:640px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.m-table{width:100%;border-collapse:collapse;font-size:13px}
+.m-table th{position:sticky;top:0;background:#151d2e;color:var(--muted);font-weight:600;font-size:11px;text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);z-index:1;white-space:nowrap}
+.m-table td{padding:8px 10px;border-bottom:1px solid #1a2233;white-space:nowrap}
+.m-table tr:hover td{background:var(--panel-2)}
+.m-table .r{text-align:right}
+.m-table .c-code{font-family:var(--mono);color:var(--muted);font-size:12px}
+.m-table .nm a{color:var(--text);font-weight:600}
+.m-table .nm a:hover{color:#8db6ff;text-decoration:underline}
+.m-table .nm small{display:block;color:var(--muted);font-size:11px;font-weight:400;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.m-table .mono{font-family:var(--mono)}
+.m-table .m-only{display:none}
+.m-table .pc{display:inline-block;min-width:68px;text-align:right;font-family:var(--mono);font-weight:600;padding:2px 6px;border-radius:6px}
+.m-table .pc.up{background:rgba(34,197,94,.13)} .m-table .pc.down{background:rgba(239,68,68,.13)}
+@media (max-width:640px){
+  .m-table .c-code,.m-table td.c-code,.m-table .c-chg{display:none}
+  .m-table{font-size:12px}
+  .m-table td,.m-table th{padding:8px 5px}
+  .m-table .nm{white-space:normal;min-width:96px}
+  .m-table .nm small{max-width:110px;white-space:nowrap}
+  .m-table .m-only{display:block;font-size:11px}
+  .m-table .pc{min-width:0;padding:2px 4px}
+  .m-tools .seg{flex-wrap:wrap}
+  .members.card{padding:14px 10px}
+  .m-tools input{min-width:0;width:100%}
+  .m-table-wrap{max-height:520px}
+}
