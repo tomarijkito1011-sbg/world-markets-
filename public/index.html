@@ -17,10 +17,12 @@
 <meta name="apple-mobile-web-app-title" content="World Markets">
 </head>
 <body>
+<script>try{document.documentElement.dataset.wmTheme=localStorage.getItem('wm-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.wmTheme='dark'}</script>
 <header class="topbar">
   <a class="brand" href="index.html"><span class="logo">🌍</span><span>World Markets<small>世界の株式市場を一目で</small></span></a>
   <div class="spacer"></div>
   <div class="clock"><div id="clock"></div><div><span class="live-dot"></span><span id="updated">読み込み中…</span></div></div>
+  <div class="settings" id="settings"></div>
 </header>
 <nav class="mnav" id="mnav" aria-label="投資対象の切り替え"></nav>
 

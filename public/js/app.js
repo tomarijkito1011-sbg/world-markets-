@@ -1,5 +1,5 @@
 import { MARKETS, REGIONS, byId, byCode, groupOf, allSymbols, ASSETS, CITY, LABELED, nextOpening } from './markets.js';
-import { STATIC, ICONS, renderNav, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
+import { STATIC, ICONS, renderNav, mountSettings, getTheme, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const wrap = $('map-wrap'), tip = $('tip');
@@ -10,6 +10,11 @@ try { mode = localStorage.getItem('wm-map-mode') || 'globe'; } catch {}
 
 startClock($('clock'));
 renderNav($('mnav'), 'index');
+mountSettings($('settings'));
+// 地図・地球儀の色（テーマごと）
+const MAPC = () => getTheme() === 'light'
+  ? { none: '#e3e8ef', stroke: '#ffffff', globe: '#cfe0f5', atmo: '#7fb0ff', side: 'rgba(15,23,42,0.08)' }
+  : { none: '#1f2633', stroke: '#0a0e16', globe: '#0d1a30', atmo: '#3b82f6', side: 'rgba(0,0,0,0.25)' };
 
 // 投資対象ごとの色
 const CAT_COLOR = { index: '#4c8dff', futures: '#a78bfa', options: '#f59e0b', commodities: '#eab308', fx: '#2dd4bf', crypto: '#fb923c' };
@@ -28,7 +33,8 @@ const HEADLINES = ASSETS.map(a => a.headline);
   const draw = t => {
     const r = c.getBoundingClientRect();
     ctx.clearRect(0, 0, r.width, r.height);
-    for (const s of pts) { ctx.globalAlpha = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(s.p + t / 1400)); ctx.fillStyle = '#cfe0ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill(); }
+    const light = getTheme() === 'light';
+    for (const s of pts) { ctx.globalAlpha = (light ? 0.1 : 0.25) + (light ? 0.2 : 0.55) * (0.5 + 0.5 * Math.sin(s.p + t / 1400)); ctx.fillStyle = light ? '#7b93b8' : '#cfe0ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill(); }
     if (!reduce && !document.hidden) requestAnimationFrame(draw);
   };
   resize(); requestAnimationFrame(draw);
@@ -69,13 +75,13 @@ function initGlobe() {
   const el = $('globe');
   globe = Globe()(el)
     .backgroundColor('rgba(0,0,0,0)')
-    .showAtmosphere(true).atmosphereColor('#3b82f6').atmosphereAltitude(0.18)
+    .showAtmosphere(true).atmosphereColor(MAPC().atmo).atmosphereAltitude(0.18)
     .showGraticules(true)
     .polygonsData(features)
     .polygonGeoJsonGeometry('geometry')
-    .polygonCapColor(f => marketOf(f) ? colorFor(info(marketOf(f)).q?.changePct) : '#1f2633')
-    .polygonSideColor(() => 'rgba(0,0,0,0.25)')
-    .polygonStrokeColor(() => '#0a0e16')
+    .polygonCapColor(f => marketOf(f) ? colorFor(info(marketOf(f)).q?.changePct) : MAPC().none)
+    .polygonSideColor(() => MAPC().side)
+    .polygonStrokeColor(() => MAPC().stroke)
     .polygonAltitude(f => f === hovered ? 0.035 : marketOf(f) ? 0.012 : 0.005)
     .polygonLabel(f => `<div class="tip" style="display:block;position:static">${marketOf(f) ? tipHTML(marketOf(f)) : noMarketTip(f.properties.name)}</div>`)
     .onPolygonHover(f => { hovered = f; globe.polygonAltitude(globe.polygonAltitude()); el.style.cursor = f && marketOf(f) ? 'pointer' : 'grab'; })
@@ -94,7 +100,7 @@ function initGlobe() {
     .htmlElementsData(LABELED.map(c => byCode[c])).htmlLat(m => CITY[m.code][0]).htmlLng(m => CITY[m.code][1]).htmlAltitude(0.02)
     .htmlElement(m => { const d = document.createElement('div'); d.className = 'globe-label'; m._label = d; fillLabel(m); return d; });
   if (globe.htmlElementVisibilityModifier) globe.htmlElementVisibilityModifier((el, visible) => { el.style.opacity = visible ? 1 : 0; });
-  globe.globeMaterial().color.set('#0d1a30');
+  globe.globeMaterial().color.set(MAPC().globe);
   globe.pointOfView({ lat: 28, lng: 128, altitude: 1.65 });
   const ctl = globe.controls();
   ctl.autoRotate = true; ctl.autoRotateSpeed = 0.35;
@@ -149,9 +155,9 @@ function initFlat() {
 }
 function refreshFlat() {
   if (!flat) return;
-  flat.countries.attr('fill', f => marketOf(f) ? colorFor(info(marketOf(f)).q?.changePct) : '#1f2633');
+  flat.countries.attr('fill', f => marketOf(f) ? colorFor(info(marketOf(f)).q?.changePct) : MAPC().none);
   flat.pts.attr('fill', m => colorFor(info(m).q?.changePct));
-  flat.labels.text(m => fmtPct(info(m).q?.changePct)).attr('fill', m => { const c = dirClass(info(m).q?.changePct); return c === 'up' ? '#86efac' : c === 'down' ? '#fca5a5' : '#cbd5e1'; });
+  flat.labels.text(m => fmtPct(info(m).q?.changePct)).attr('fill', m => { const c = dirClass(info(m).q?.changePct); const L = getTheme() === 'light'; return c === 'up' ? (L ? '#15803d' : '#86efac') : c === 'down' ? (L ? '#b91c1c' : '#fca5a5') : (L ? '#475569' : '#cbd5e1'); });
 }
 function showTip(ev, html) {
   tip.innerHTML = html; tip.style.display = 'block';
@@ -197,6 +203,12 @@ function renderList() {
     }).join('')}</div>`;
   }).join('');
 }
+
+// テーマが変わったら、CSSで変えられない地図・地球儀・カードの色を塗り直す
+window.addEventListener('wm-theme', () => {
+  if (globe) { const c = MAPC(); globe.globeMaterial().color.set(c.globe); globe.atmosphereColor(c.atmo).polygonSideColor(globe.polygonSideColor()).polygonStrokeColor(globe.polygonStrokeColor()); }
+  refreshGlobe(); refreshFlat(); renderList(); renderCats(); renderRanks();
+});
 
 // ── 左側のまとめ ──
 function renderPanel() {

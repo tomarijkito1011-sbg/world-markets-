@@ -1,5 +1,5 @@
 import { MARKETS, byCode, tzOffset, groupOf, GROUPS } from './markets.js';
-import { STATIC, statusOf, fetchConstituents, fmtMoney, fmtCap, currencyName, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, badge, startClock, summarize, sparkSVG, REFRESH_MS } from './common.js';
+import { STATIC, statusOf, fetchConstituents, fmtMoney, fmtCap, currencyName, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, mountSettings, themeColors, flag, esc, timeIn, dateTimeIn, freshness, badge, startClock, summarize, sparkSVG, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -19,6 +19,7 @@ $('flag').textContent = flag(m.code);
 $('cname').textContent = m.name;
 $('tzname').textContent = `（${m.tz}）`;
 startClock($('clock'));
+mountSettings($('settings'));
 
 // 取引時間（現地＋日本時間）
 function hoursText() {
@@ -109,10 +110,10 @@ async function refreshQuotes() {
 // ── チャート ──
 const chart = LightweightCharts.createChart($('chart'), {
   autoSize: true,
-  layout: { background: { color: 'transparent' }, textColor: '#8c97ab', fontFamily: 'Inter, "Hiragino Sans", "Noto Sans JP", sans-serif' },
-  grid: { vertLines: { color: 'rgba(35,44,63,.6)' }, horzLines: { color: 'rgba(35,44,63,.6)' } },
-  rightPriceScale: { borderColor: '#232c3f' },
-  timeScale: { borderColor: '#232c3f', timeVisible: true, secondsVisible: false },
+  layout: { background: { color: 'transparent' }, textColor: themeColors().text, fontFamily: 'Inter, "Hiragino Sans", "Noto Sans JP", sans-serif' },
+  grid: { vertLines: { color: themeColors().grid }, horzLines: { color: themeColors().grid } },
+  rightPriceScale: { borderColor: themeColors().border },
+  timeScale: { borderColor: themeColors().border, timeVisible: true, secondsVisible: false },
   crosshair: { mode: LightweightCharts.CrosshairMode.Magnet },
   localization: { locale: 'ja-JP', priceFormatter: p => Math.abs(p) >= 1000 ? Math.round(p).toLocaleString('ja-JP') : fmtNum(p) },
 });
@@ -121,8 +122,8 @@ let prevLine = null, chartData = [], chartOffset = 0, chartReq = 0;
 const RANGE_LABEL = { '1d': '1日', '5d': '1週間', '1mo': '1か月', '1y': '1年', '5y': '5年' };
 
 function colorize(up) {
-  const c = up ? '#22c55e' : '#ef4444';
-  series.applyOptions({ lineColor: c, topColor: up ? 'rgba(34,197,94,.28)' : 'rgba(239,68,68,.28)', bottomColor: 'rgba(0,0,0,0)' });
+  const t = themeColors();
+  series.applyOptions({ lineColor: up ? t.up : t.down, topColor: up ? t.upFill : t.downFill, bottomColor: 'rgba(0,0,0,0)' });
 }
 
 async function loadChart(silent = false) {
@@ -146,7 +147,7 @@ async function loadChart(silent = false) {
     series.setData(chartData);
     if (prevLine) { series.removePriceLine(prevLine); prevLine = null; }
     const base = range === '1d' ? d.prevClose : chartData[0]?.value;
-    if (range === '1d' && d.prevClose) prevLine = series.createPriceLine({ price: d.prevClose, color: '#6b7280', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '前日終値' });
+    if (range === '1d' && d.prevClose) prevLine = series.createPriceLine({ price: d.prevClose, color: themeColors().ref, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '前日終値' });
     const last = chartData.at(-1)?.value;
     colorize(last == null || base == null || last >= base);
     chart.applyOptions({ timeScale: { timeVisible: ['1d', '5d', '1mo'].includes(range) } });
@@ -238,3 +239,11 @@ $('m-sort').querySelectorAll('button').forEach(b => b.onclick = () => {
 });
 loadMembers();
 setInterval(() => { if (!document.hidden && !STATIC && statusOf(m, quotes[symbol]?.time).state === 'open') loadMembers(); }, 30_000);
+
+// テーマが変わったらチャートの色を塗り直す
+window.addEventListener('wm-theme', () => {
+  renderOthers();
+  const c = themeColors();
+  chart.applyOptions({ layout: { textColor: c.text }, grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } }, rightPriceScale: { borderColor: c.border }, timeScale: { borderColor: c.border } });
+  loadChart(true);
+});

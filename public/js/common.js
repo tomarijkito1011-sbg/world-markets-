@@ -14,14 +14,54 @@ export const flag = code => String.fromCodePoint(...[...code].map(c => 0x1f1e6 +
 export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // 騰落率 → 色（緑＝上昇、赤＝下落。±3%で最も濃い）
-const NEUTRAL = [52, 58, 70], UP = [34, 197, 94], DOWN = [239, 68, 68], UP0 = [36, 83, 58], DOWN0 = [90, 45, 51];
+// テーマごとの色（ダーク: 暗い地に鮮やかな色、ライト: 白地に淡い色から濃い色）
+const PALETTE = {
+  dark: { none: [43, 50, 64], neutral: [52, 58, 70], up: [34, 197, 94], down: [239, 68, 68], up0: [36, 83, 58], down0: [90, 45, 51] },
+  light: { none: [221, 227, 236], neutral: [203, 213, 225], up: [22, 163, 74], down: [220, 38, 38], up0: [187, 240, 204], down0: [254, 205, 205] },
+};
 const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
 export function colorFor(pct) {
-  if (pct == null || isNaN(pct)) return 'rgb(43,50,64)';
-  if (Math.abs(pct) < 0.005) return `rgb(${NEUTRAL})`;
+  const P = PALETTE[getTheme()];
+  if (pct == null || isNaN(pct)) return `rgb(${P.none})`;
+  if (Math.abs(pct) < 0.005) return `rgb(${P.neutral})`;
   const t = Math.min(1, Math.sqrt(Math.abs(pct) / 3));
-  return `rgb(${pct > 0 ? mix(UP0, UP, t) : mix(DOWN0, DOWN, t)})`;
+  return `rgb(${pct > 0 ? mix(P.up0, P.up, t) : mix(P.down0, P.down, t)})`;
 }
+
+// ── 表示テーマ（ライト／ダーク） ──
+export function getTheme() { return document.documentElement.dataset.wmTheme === 'light' ? 'light' : 'dark'; }
+export function setTheme(t) {
+  document.documentElement.dataset.wmTheme = t;
+  try { localStorage.setItem('wm-theme', t); } catch {}
+  window.dispatchEvent(new CustomEvent('wm-theme', { detail: t }));
+}
+// チャートなど、CSSで色を変えられない部品のための色
+export const themeColors = () => getTheme() === 'light'
+  ? { text: '#5d6879', grid: 'rgba(15,23,42,.07)', border: '#dfe4ec', up: '#16a34a', down: '#dc2626', upFill: 'rgba(22,163,74,.18)', downFill: 'rgba(220,38,38,.15)', ref: '#94a3b8' }
+  : { text: '#8c97ab', grid: 'rgba(35,44,63,.6)', border: '#232c3f', up: '#22c55e', down: '#ef4444', upFill: 'rgba(34,197,94,.28)', downFill: 'rgba(239,68,68,.28)', ref: '#6b7280' };
+
+// 右上の歯車ボタンと表示設定メニュー
+const GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+export function mountSettings(el) {
+  if (!el) return;
+  el.innerHTML = `<button class="gear" id="gear" aria-haspopup="true" aria-expanded="false" aria-label="表示設定" title="表示設定">${GEAR}</button>
+    <div class="menu" id="settings-menu" hidden role="dialog" aria-label="表示設定">
+      <h4>画面の色</h4>
+      <div class="theme-opts" role="radiogroup" aria-label="画面の色">
+        <button class="theme-opt" role="radio" data-t="light"><div class="sw light"><i></i><i></i><i></i></div><span>ライトモード</span></button>
+        <button class="theme-opt" role="radio" data-t="dark"><div class="sw dark"><i></i><i></i><i></i></div><span>ダークモード</span></button>
+      </div>
+    </div>`;
+  const btn = el.querySelector('#gear'), menu = el.querySelector('#settings-menu');
+  const sync = () => el.querySelectorAll('.theme-opt').forEach(b => b.setAttribute('aria-checked', String(b.dataset.t === getTheme())));
+  const open = v => { menu.hidden = !v; btn.setAttribute('aria-expanded', String(v)); };
+  btn.onclick = e => { e.stopPropagation(); open(menu.hidden); };
+  el.querySelectorAll('.theme-opt').forEach(b => b.onclick = () => { setTheme(b.dataset.t); sync(); });
+  document.addEventListener('click', e => { if (!el.contains(e.target)) open(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.hidden) { open(false); btn.focus(); } });
+  sync();
+}
+
 
 // STATIC: サーバーなしで、保存済みの株価データ（data/）を表示するモード
 export const STATIC = !!window.WM_STATIC;

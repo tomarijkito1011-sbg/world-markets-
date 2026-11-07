@@ -1,5 +1,5 @@
 import { ASSETS, assetByKey, assetStatus, SCHEDULE_TEXT } from './markets.js';
-import { STATIC, ICONS, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, esc, timeIn, dateTimeIn, badge, startClock, colorFor, renderNav, REFRESH_MS } from './common.js';
+import { STATIC, ICONS, fetchQuotes, fetchChart, fmtNum, fmtPct, fmtChg, dirClass, mountSettings, themeColors, esc, timeIn, dateTimeIn, badge, startClock, colorFor, renderNav, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const RANGES = ['1d', '5d', '1mo', '1y', '5y'];
@@ -8,6 +8,7 @@ const JST_OFFSET = 9 * 3600;
 
 let asset = null, symbol = null, range = '1d', quotes = {};
 startClock($('clock'));
+mountSettings($('settings'));
 
 // 価格の小数桁（為替は円がらみ3桁・それ以外5桁）
 function dp(v) {
@@ -96,10 +97,10 @@ async function refreshQuotes() {
 // ── チャート（時刻は日本時間） ──
 const chart = LightweightCharts.createChart($('chart'), {
   autoSize: true,
-  layout: { background: { color: 'transparent' }, textColor: '#8c97ab', fontFamily: 'Inter, "Hiragino Sans", "Noto Sans JP", sans-serif' },
-  grid: { vertLines: { color: 'rgba(35,44,63,.6)' }, horzLines: { color: 'rgba(35,44,63,.6)' } },
-  rightPriceScale: { borderColor: '#232c3f' },
-  timeScale: { borderColor: '#232c3f', timeVisible: true, secondsVisible: false },
+  layout: { background: { color: 'transparent' }, textColor: themeColors().text, fontFamily: 'Inter, "Hiragino Sans", "Noto Sans JP", sans-serif' },
+  grid: { vertLines: { color: themeColors().grid }, horzLines: { color: themeColors().grid } },
+  rightPriceScale: { borderColor: themeColors().border },
+  timeScale: { borderColor: themeColors().border, timeVisible: true, secondsVisible: false },
   crosshair: { mode: LightweightCharts.CrosshairMode.Magnet },
   localization: { locale: 'ja-JP', priceFormatter: p => fmtNum(p, dp(p)) },
 });
@@ -123,9 +124,9 @@ async function loadChart(silent = false) {
     series.setData(chartData);
     if (prevLine) { series.removePriceLine(prevLine); prevLine = null; }
     const base = range === '1d' ? d.prevClose : chartData[0]?.value;
-    if (range === '1d' && d.prevClose) prevLine = series.createPriceLine({ price: d.prevClose, color: '#6b7280', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '前日終値' });
+    if (range === '1d' && d.prevClose) prevLine = series.createPriceLine({ price: d.prevClose, color: themeColors().ref, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '前日終値' });
     const last = chartData.at(-1)?.value, up = last == null || base == null || last >= base;
-    series.applyOptions({ lineColor: up ? '#22c55e' : '#ef4444', topColor: up ? 'rgba(34,197,94,.28)' : 'rgba(239,68,68,.28)', bottomColor: 'rgba(0,0,0,0)' });
+    const tc = themeColors(); series.applyOptions({ lineColor: up ? tc.up : tc.down, topColor: up ? tc.upFill : tc.downFill, bottomColor: 'rgba(0,0,0,0)' });
     chart.applyOptions({ timeScale: { timeVisible: ['1d', '5d', '1mo'].includes(range) } });
     if (!silent) chart.timeScale().fitContent();
     $('chart-msg').hidden = chartData.length > 0;
@@ -154,3 +155,11 @@ readHash(); setup();
 setInterval(() => { if (!document.hidden) refreshQuotes(); }, REFRESH_MS);
 setInterval(() => { renderStatus(); }, 30_000);
 setInterval(() => { if (!document.hidden && range === '1d' && assetStatus(asset.schedule).state === 'open') loadChart(true); }, 60_000);
+
+// テーマが変わったらチャートの色を塗り直す
+window.addEventListener('wm-theme', () => {
+  renderTiles();
+  const c = themeColors();
+  chart.applyOptions({ layout: { textColor: c.text }, grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } }, rightPriceScale: { borderColor: c.border }, timeScale: { borderColor: c.border } });
+  loadChart(true);
+});
