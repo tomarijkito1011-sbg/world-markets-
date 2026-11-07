@@ -1,6 +1,7 @@
 // 指数の構成銘柄リストを作り、public/data/constituents/<記号>.json に保存する。
 // 出典: Wikipedia（構成銘柄）、日本取引所グループ（日本企業の名前と業種）
 // 使い方: NODE_USE_ENV_PROXY=1 node scripts/fetch-constituents.mjs [JPXのdata_j.xlsxのパス]
+// TOPIX は JPX の「TOPIX構成銘柄ウエイト一覧」(topixweight_j.csv) から作る（ネットから直接取得）
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -101,7 +102,21 @@ const SOURCES = [
   { index: '^STI', name: 'STI', page: 'en:Straits Times Index', ticker: /ticker|symbol|code/i, name: /company|name/i, sector: /sector|industry/i, suffix: '.SI' },
 ];
 
+// TOPIX: JPX の公式ウエイト一覧（全構成銘柄）
+async function buildTopix() {
+  const r = await fetch('https://www.jpx.co.jp/automation/markets/indices/topix/files/topixweight_j.csv', { headers: { 'User-Agent': 'Mozilla/5.0 (WorldMarkets dashboard)' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const text = new TextDecoder('shift_jis').decode(await r.arrayBuffer());
+  const lines = text.trim().split(/\r?\n/).slice(1).map(l => l.split(','));
+  const asOf = lines[0]?.[0]?.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+  const items = lines.filter(c => c[2]).map(([, n, code, sector, w, size]) => ({ s: code.trim() + '.T', n: n.normalize('NFKC'), sector, w: parseFloat(w), size }));
+  const out = { index: '998405.T', name: 'TOPIX（東証株価指数）', source: '日本取引所グループ「TOPIX構成銘柄ウエイト一覧」', asOf, items };
+  fs.writeFileSync(path.join(OUT, safe('998405.T') + '.json'), JSON.stringify(out));
+  console.log('OK  998405.T', items.length, items.slice(0, 3).map(i => `${i.s}:${i.n}`).join(' / '));
+}
+
 const only = process.env.ONLY?.split(',');
+if (!only || only.includes('998405.T')) await buildTopix().catch(e => console.log('NG  998405.T', e.message));
 for (const src of SOURCES) {
   if (only && !only.includes(src.index)) continue;
   try {

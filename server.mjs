@@ -56,7 +56,30 @@ function quoteTTL(symbol) {
   return st === 'open' ? OPEN_TTL : CLOSED_TTL;
 }
 
+// ── TOPIX（指数そのもの） ──
+// 指数値・前日比・高値・安値は Yahoo!ファイナンス（日本）の TOPIX（998405.T）のページから取る。
+// チャートの線は取得先がないため、連動ETF(1306)の値動きを TOPIX の水準に換算して描く。
+const TOPIX = '998405.T', TOPIX_ETF = '1306.T';
+const num = v => v == null ? null : Number(String(v).replace(/,/g, ''));
+async function topixOfficial() {
+  const r = await fetch('https://finance.yahoo.co.jp/quote/998405.T', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
+  const html = (await r.text()).replace(/\\"/g, '"');
+  const pb = html.match(/"priceBoard":\{"code":"998405\.T".*?"price":\{"changePrice":"([^"]+)","changePriceRate":"([^"]+)".*?"value":"([^"]+)"/);
+  const val = k => html.match(new RegExp(`"value":"([^"]+)"[^}]*"wordKey":"${k}"`))?.[1];
+  if (!pb) throw new Error('TOPIX not found');
+  return { price: num(pb[3]), change: num(pb[1]), changePct: num(pb[2]), prevClose: num(val('previousPrice')), high: num(val('highPrice')), low: num(val('lowPrice')) };
+}
+async function getTopixQuote() {
+  return cached('q:' + TOPIX, quoteTTL(TOPIX_ETF), async () => {
+    const [o, etf] = await Promise.all([topixOfficial(), getQuote(TOPIX_ETF)]);
+    const k = o.price / etf.price;
+    return { symbol: TOPIX, price: o.price, prevClose: o.prevClose, change: o.change, changePct: o.changePct, high: o.high, low: o.low,
+      currency: 'JPY', time: etf.time, fetchedAt: Math.floor(Date.now() / 1000), spark: (etf.spark || []).map(v => v * k), source: 'Yahoo!ファイナンス（TOPIX 998405）' };
+  });
+}
+
 async function getQuote(symbol) {
+  if (symbol === TOPIX) return getTopixQuote();
   return cached('q:' + symbol, quoteTTL(symbol), async () => {
     const res = await yahooChart(symbol, '1d', '5m');
     const m = res.meta;
@@ -87,6 +110,17 @@ const RANGES = { '1d': ['1d', '2m'], '5d': ['5d', '15m'], '1mo': ['1mo', '60m'],
 const CHART_TTL = { '1d': 15_000, '5d': 60_000, '1mo': 5 * 60_000, '1y': 30 * 60_000, '5y': 60 * 60_000 };
 
 async function getChart(symbol, range) {
+  if (symbol === TOPIX) {
+    const [etf, q] = await Promise.all([getChart(TOPIX_ETF, range), getTopixQuote()]);
+    const last = etf.points.at(-1)?.[1];
+    let f = v => v * q.price / last;
+    // 1日チャートは「前日終値」と「現在値」の2点で合わせる
+    if (range === '1d' && etf.prevClose && last !== etf.prevClose) {
+      const a = (q.price - q.prevClose) / (last - etf.prevClose), b = q.price - a * last;
+      f = v => a * v + b;
+    }
+    return { ...etf, symbol, prevClose: range === '1d' ? q.prevClose : etf.prevClose && f(etf.prevClose), points: etf.points.map(([t, v]) => [t, f(v)]), derived: true };
+  }
   const [r, iv] = RANGES[range];
   const ttl = range === '1d' ? quoteTTL(symbol) === OPEN_TTL ? CHART_TTL['1d'] : CLOSED_TTL : CHART_TTL[range];
   return cached(`c:${symbol}:${range}`, ttl, async () => {
@@ -118,7 +152,16 @@ async function sparkBatch(symbols) {
   return out;
 }
 // 発行済株式数（四半期→年次の順に最新値）。1日キャッシュ
+// 株式数はファイルにも保存して、サーバーを再起動しても取り直さなくて済むようにする
+const SHARES_FILE = path.join(ROOT, '.cache/shares.json');
+let shareStore = {};
+try { shareStore = JSON.parse(await fs.readFile(SHARES_FILE, 'utf8')); } catch {}
+for (const [k, v] of Object.entries(shareStore)) if (Date.now() - v.t < 7 * 86400_000) cache.set('sh:' + k, { t: v.t, data: v.data });
+let saveTimer = null;
+const saveShares = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => fs.mkdir(path.dirname(SHARES_FILE), { recursive: true }).then(() => fs.writeFile(SHARES_FILE, JSON.stringify(shareStore))).catch(() => {}), 3000); };
 async function getShares(symbol) {
+  const c = cache.get('sh:' + symbol);
+  if (c?.data && Date.now() - c.t < 24 * 3600_000) return c.data;
   return cached('sh:' + symbol, 24 * 3600_000, async () => {
     const now = Math.floor(Date.now() / 1000);
     const url = `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}?type=quarterlyOrdinarySharesNumber,annualOrdinarySharesNumber&period1=${now - 3 * 365 * 86400}&period2=${now}`;
@@ -130,10 +173,12 @@ async function getShares(symbol) {
       const last = arr.at(-1); if (!last) continue;
       if (!best || last.asOfDate > best.asOfDate) best = { asOfDate: last.asOfDate, shares: last.reportedValue.raw };
     }
+    if (best) { shareStore[symbol] = { t: Date.now(), data: best }; saveShares(); }
     return best;
   });
 }
 // 100分の1単位の通貨（ペンス・セント・アゴロト）を本来の通貨に直す
+const bgShares = new Set();
 const MINOR = { GBp: ['GBP', 100], GBX: ['GBP', 100], ZAc: ['ZAR', 100], ILA: ['ILS', 100] };
 async function getConstituents(index) {
   const list = await loadList(index);
@@ -143,17 +188,27 @@ async function getConstituents(index) {
     const syms = list.items.map(i => i.s);
     const chunks = []; for (let i = 0; i < syms.length; i += 20) chunks.push(syms.slice(i, i + 20));
     const prices = Object.assign({}, ...(await pool(chunks, 4, c => sparkBatch(c).catch(() => ({})))));
-    const shares = await pool(syms, 6, s => getShares(s).catch(() => null));
+    // 株式数: 銘柄が多い指数（TOPIXなど）は、まだ取れていない分を裏で集めて、取れた分から時価総額を出す
+    let shares;
+    if (syms.length <= 600) shares = await pool(syms, 6, s => getShares(s).catch(() => null));
+    else {
+      shares = syms.map(s => cache.get('sh:' + s)?.data || null);
+      const missing = syms.filter((s, i) => !shares[i]);
+      if (missing.length && !bgShares.has(index)) {
+        bgShares.add(index);
+        pool(missing, 6, s => getShares(s).catch(() => null)).finally(() => { bgShares.delete(index); cache.delete('k:' + index); });
+      }
+    }
     const rows = list.items.map((it, k) => {
       const p = prices[it.s]; if (!p || p.price == null) return { ...it, error: true };
       let { price, prev, high, low, currency } = p;
       const minor = MINOR[currency];
       if (minor) { const d = minor[1]; price /= d; prev = prev != null ? prev / d : prev; high = high != null ? high / d : high; low = low != null ? low / d : low; currency = minor[0]; }
       const sh = shares[k]?.shares;
-      return { ...it, price, prev, change: prev ? price - prev : null, pct: prev ? (price / prev - 1) * 100 : null, high, low,
+      return { ...it, w: it.w, price, prev, change: prev ? price - prev : null, pct: prev ? (price / prev - 1) * 100 : null, high, low,
         currency, time: p.time, mcap: sh ? sh * price : null, en: p.name };
     });
-    return { index, name: list.name, source: list.source, asOf: list.asOf, serverTime: Math.floor(Date.now() / 1000), rows };
+    return { index, name: list.name, source: list.source, asOf: list.asOf, serverTime: Math.floor(Date.now() / 1000), pending: bgShares.has(index), rows };
   });
 }
 

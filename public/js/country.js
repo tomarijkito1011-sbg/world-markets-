@@ -154,7 +154,7 @@ async function loadChart(silent = false) {
     $('chart-msg').hidden = chartData.length > 0;
     $('chart-msg').textContent = 'この期間のデータがありません';
     const chgTxt = base && last ? `期間の騰落: <span class="${dirClass(last - base)}">${fmtPct((last / base - 1) * 100)}</span>` : '';
-    $('chart-note').innerHTML = `${chgTxt}${chgTxt ? ' · ' : ''}時刻は現地時間（${esc(m.tz)}）`;
+    $('chart-note').innerHTML = `${chgTxt}${chgTxt ? ' · ' : ''}時刻は現地時間（${esc(m.tz)}）${d.derived ? '<br>※ TOPIXの指数値・前日比・高値・安値は実際の指数の値です。チャートの線だけは指数の時系列を取得できないため、連動ETF（1306）の値動きをTOPIXの水準に換算して描いています。' : ''}`;
   } catch (e) {
     if (req !== chartReq) return;
     $('chart-msg').hidden = false; $('chart-msg').textContent = 'チャートを取得できませんでした';
@@ -213,12 +213,13 @@ function renderMembers() {
   $('m-summary').innerHTML = `<span><b class="up">${up}</b>値上がり</span><span><b class="down">${down}</b>値下がり</span><span><b class="flat">${rows.length - up - down}</b>変わらず</span><span>時価総額の合計 <b style="color:var(--text)">${fmtCap(cap, cur)}</b></span>`;
   const q = $('m-search').value.trim().toLowerCase();
   let list = d.rows.filter(r => !q || (r.n || '').toLowerCase().includes(q) || (r.en || '').toLowerCase().includes(q) || r.s.toLowerCase().includes(q));
-  const by = { mcap: (a, b) => (b.mcap || 0) - (a.mcap || 0), up: (a, b) => (b.pct ?? -1e9) - (a.pct ?? -1e9), down: (a, b) => (a.pct ?? 1e9) - (b.pct ?? 1e9), code: (a, b) => a.s.localeCompare(b.s, 'ja', { numeric: true }) }[sortKey];
+  const capKey = r => r.mcap ?? (r.w ? r.w * 1e13 : 0);
+  const by = { mcap: (a, b) => capKey(b) - capKey(a), up: (a, b) => (b.pct ?? -1e9) - (a.pct ?? -1e9), down: (a, b) => (a.pct ?? 1e9) - (b.pct ?? 1e9), code: (a, b) => a.s.localeCompare(b.s, 'ja', { numeric: true }) }[sortKey];
   list = [...list].sort(by);
   const code = s => s.replace(/\.(T|L|DE|PA|HK|NS|BO|TO|AX|SW|AS|MC|MI|ST|SI)$/, '');
   $('m-body').innerHTML = list.length ? list.map(r => {
     const cls = dirClass(r.pct);
-    const sub = [r.n && r.en && r.n !== r.en ? r.en : '', r.sector].filter(Boolean).join(' · ');
+    const sub = [r.n && r.en && r.n !== r.en && !r.s.endsWith('.T') ? r.en : '', r.sector, r.w != null ? `ウエイト ${r.w.toFixed(r.w >= 0.1 ? 2 : 3)}%` : ''].filter(Boolean).join(' · ');
     return `<tr><td class="c-code">${esc(code(r.s))}</td>
       <td class="nm"><a href="${yahooUrl(r.s)}" target="_blank" rel="noopener">${esc(r.n || r.en || r.s)}</a>${sub ? `<small>${esc(sub)}</small>` : ''}</td>
       <td class="r mono">${fmtMoney(r.price, r.currency)}<small class="m-only ${cls}">${fmtMoney(r.change, r.currency, true)}</small></td>
@@ -226,7 +227,8 @@ function renderMembers() {
       <td class="r"><span class="pc ${cls}">${fmtPct(r.pct)}</span></td>
       <td class="r mono">${fmtCap(r.mcap, r.currency)}</td></tr>`;
   }).join('') : `<tr><td colspan="6" class="muted" style="padding:20px">「${esc(q)}」に当てはまる銘柄はありません。</td></tr>`;
-  $('m-note').innerHTML = `銘柄リストの出典: ${esc(d.source)}（${esc(d.asOf)} 時点）。時価総額は「現在値 × 直近の決算で報告された発行済株式数」で計算した概算です。銘柄名を押すと Yahoo!ファイナンスが開きます。${STATIC ? '' : ''}`;
+  const pending = d.pending ? d.rows.filter(r => !r.error && r.mcap == null).length : 0;
+  $('m-note').innerHTML = `${pending ? `時価総額を集計中です（残り${pending}銘柄。少し待って開き直すと表示されます）。` : ''}銘柄リストの出典: ${esc(d.source)}（${esc(d.asOf)} 時点）。時価総額は「現在値 × 直近の決算で報告された発行済株式数」で計算した概算です。銘柄名を押すと Yahoo!ファイナンスが開きます。${STATIC ? '' : ''}`;
 }
 $('m-search').addEventListener('input', renderMembers);
 $('m-sort').querySelectorAll('button').forEach(b => b.onclick = () => {
