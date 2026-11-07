@@ -12,6 +12,19 @@ const TIE = {
   AU: ['#00008b', '#ff0000'], IT: ['#009246', '#ce2b37'], ES: ['#aa151b', '#f1bf00'], MX: ['#006847', '#ce1126'], HK: ['#de2910', '#ffffff'], TW: ['#000095', '#fe0000'],
   SA: ['#006c35', '#ffffff'], ZA: ['#007749', '#ffb81c'], CH: ['#d52b1e', '#ffffff'], SE: ['#006aa7', '#fecc00'], TR: ['#e30a17', '#ffffff'], ID: ['#ce1126', '#ffffff'],
 };
+// 国ごとに決めたキャラクター（名前は出さない架空の人物。外見の特徴だけを決める）
+const CHARACTERS = {
+  // アメリカ: 金髪をふんわり盛った、大柄でお金持ち風の白人男性。金のカフスと大きな腕時計
+  US: { skin: '#f6d2bd', hair: '#efcf6a', style: 6, build: 1.28, suit: '#18203a', tie: ['#c8102e'], cufflinks: true, rich: true },
+  // 日本: キリッとした目元の、自信に満ちた女性。ショートボブに真珠のネックレス
+  JP: { skin: '#f7dccb', hair: '#16161c', style: 7, female: true, sharp: true, suit: '#24314f', pearls: true, lips: '#c2405a' },
+  // 中国: なでつけた黒髪、どっしりした顔立ちの落ち着いた男性
+  CN: { skin: '#f1d0ae', hair: '#0f0f12', style: 8, build: 1.18, suit: '#1f2230', tie: ['#b71c1c'], calm: true },
+  // フランス: 洗練された中年のヨーロッパ紳士。白髪まじりの横分け、無精ひげ、細身のスーツ
+  FR: { skin: '#f2cfb8', hair: '#5b4532', style: 0, build: 0.95, suit: '#16223f', tie: ['#0b2e6b'], grayTemples: true, stubble: true, eyes: '#3f6fb0' },
+  // イタリア: 印象の強い金髪の女性。ロングヘア、くっきりした眉、赤い口紅、イヤリング
+  IT: { skin: '#f6d6c2', hair: '#e7c776', style: 9, female: true, bold: true, suit: '#14171f', lips: '#c4161c', earrings: true },
+};
 const SKIN = ['#f6d7c3', '#eac0a2', '#d9a27e', '#c68863', '#a86b47', '#8a5233', '#6b3d25'];
 const HAIR = ['#1b1b1f', '#3b2a20', '#6b4a2e', '#a0a0a8', '#d8d8dc', '#c9a15a', '#2f2f3a'];
 const SUIT = ['#1e2433', '#2b3348', '#3a2f2a', '#23313a', '#2e2e36'];
@@ -28,21 +41,51 @@ function seeded(str) { let h = 2166136261; for (const c of str) h = Math.imul(h 
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 
 function drawCharacter(g, cx, cy, s, look, mood) {
+  const B = look.build || 1; // 体格（1より大きいと大柄）
+  // 後ろ髪（ロングヘア・ボブは顔より先に描く）
+  g.fillStyle = look.hair;
+  if (look.style === 9) { g.beginPath(); g.moveTo(cx - s * 0.78, cy - s * 0.2); g.quadraticCurveTo(cx - s * 1.0, cy + s * 0.9, cx - s * 0.62, cy + s * 1.35); g.lineTo(cx + s * 0.62, cy + s * 1.35); g.quadraticCurveTo(cx + s * 1.0, cy + s * 0.9, cx + s * 0.78, cy - s * 0.2); g.closePath(); g.fill(); }
+  if (look.style === 7) { g.beginPath(); g.ellipse(cx, cy + s * 0.05, s * 0.8, s * 0.72, 0, 0, Math.PI * 2); g.fill(); }
   // 体（スーツ・シャツ・ネクタイ）
   g.fillStyle = look.suit;
-  g.beginPath(); g.moveTo(cx - s * 1.05, cy + s * 1.9); g.quadraticCurveTo(cx - s * 1.0, cy + s * 0.95, cx - s * 0.35, cy + s * 0.85);
-  g.lineTo(cx + s * 0.35, cy + s * 0.85); g.quadraticCurveTo(cx + s * 1.0, cy + s * 0.95, cx + s * 1.05, cy + s * 1.9); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(cx - s * 1.05 * B, cy + s * 1.9); g.quadraticCurveTo(cx - s * 1.0 * B, cy + s * 0.95, cx - s * 0.35, cy + s * 0.85);
+  g.lineTo(cx + s * 0.35, cy + s * 0.85); g.quadraticCurveTo(cx + s * 1.0 * B, cy + s * 0.95, cx + s * 1.05 * B, cy + s * 1.9); g.closePath(); g.fill();
   g.fillStyle = '#f4f6fa'; g.beginPath(); g.moveTo(cx - s * 0.3, cy + s * 0.85); g.lineTo(cx, cy + s * 1.35); g.lineTo(cx + s * 0.3, cy + s * 0.85); g.closePath(); g.fill();
-  const tie = g.createLinearGradient(cx, cy + s * 0.9, cx, cy + s * 1.7);
-  look.tie.forEach((c, i) => { tie.addColorStop(i / look.tie.length, c); tie.addColorStop((i + 1) / look.tie.length - 0.001, c); });
-  g.fillStyle = tie; g.beginPath(); g.moveTo(cx - s * 0.09, cy + s * 0.9); g.lineTo(cx + s * 0.09, cy + s * 0.9); g.lineTo(cx + s * 0.13, cy + s * 1.55); g.lineTo(cx, cy + s * 1.72); g.lineTo(cx - s * 0.13, cy + s * 1.55); g.closePath(); g.fill();
-  // 首と顔
+  if (!look.female) {
+    const tie = g.createLinearGradient(cx, cy + s * 0.9, cx, cy + s * 1.7);
+    look.tie.forEach((c, i) => { tie.addColorStop(i / look.tie.length, c); tie.addColorStop((i + 1) / look.tie.length - 0.001, c); });
+    const tl = look.rich ? 1.88 : 1.72; // 大柄な人は長めのネクタイ
+    g.fillStyle = tie; g.beginPath(); g.moveTo(cx - s * 0.09, cy + s * 0.9); g.lineTo(cx + s * 0.09, cy + s * 0.9); g.lineTo(cx + s * 0.14, cy + s * (tl - 0.17)); g.lineTo(cx, cy + s * tl); g.lineTo(cx - s * 0.14, cy + s * (tl - 0.17)); g.closePath(); g.fill();
+  }
+  if (look.rich) { // 金のカフスと大きな腕時計、胸に星条旗のピン
+    g.fillStyle = '#f2c94c'; g.beginPath(); g.arc(cx - s * 0.98 * B + s * 0.1, cy + s * 1.78, s * 0.08, 0, Math.PI * 2); g.arc(cx + s * 0.98 * B - s * 0.1, cy + s * 1.78, s * 0.08, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#d4a017'; g.fillRect(cx + s * 0.98 * B - s * 0.3, cy + s * 1.6, s * 0.2, s * 0.12);
+    g.fillStyle = '#c8102e'; g.fillRect(cx - s * 0.62, cy + s * 1.15, s * 0.12, s * 0.08); g.fillStyle = '#ffffff'; g.fillRect(cx - s * 0.62, cy + s * 1.17, s * 0.12, s * 0.02); g.fillStyle = '#1d3b8a'; g.fillRect(cx - s * 0.62, cy + s * 1.15, s * 0.05, s * 0.04);
+  }
+  if (look.pearls) { g.fillStyle = '#f6f2ea'; for (let i = 0; i < 9; i++) { const a = Math.PI * (0.15 + i * 0.0875); g.beginPath(); g.arc(cx + Math.cos(a) * s * 0.32, cy + s * 0.78 + Math.sin(a) * s * 0.22, s * 0.045, 0, Math.PI * 2); g.fill(); } }
+  // 首と顔（大柄な人は顔も少し大きく）
+  const FW = s * 0.62 * (B > 1 ? Math.min(B, 1.12) : 1);
   g.fillStyle = look.skin; g.fillRect(cx - s * 0.22, cy + s * 0.55, s * 0.44, s * 0.35);
-  g.beginPath(); g.ellipse(cx, cy, s * 0.62, s * 0.72, 0, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(cx - s * 0.62, cy + s * 0.05, s * 0.1, s * 0.16, 0, 0, Math.PI * 2); g.ellipse(cx + s * 0.62, cy + s * 0.05, s * 0.1, s * 0.16, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(cx, cy, FW, s * 0.72, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(cx - FW, cy + s * 0.05, s * 0.1, s * 0.16, 0, 0, Math.PI * 2); g.ellipse(cx + FW, cy + s * 0.05, s * 0.1, s * 0.16, 0, 0, Math.PI * 2); g.fill();
+  if (look.stubble) { g.fillStyle = 'rgba(70,50,40,.13)'; g.beginPath(); g.ellipse(cx, cy + s * 0.38, s * 0.42, s * 0.28, 0, 0, Math.PI); g.fill(); }
+  if (look.earrings) { g.fillStyle = '#f2c94c'; g.beginPath(); g.arc(cx - FW, cy + s * 0.25, s * 0.06, 0, Math.PI * 2); g.arc(cx + FW, cy + s * 0.25, s * 0.06, 0, Math.PI * 2); g.fill(); }
   // 髪型
   g.fillStyle = look.hair;
   switch (look.style) {
+    case 6: // ふんわり盛った金髪（前髪を大きく横に流す）
+      g.beginPath(); g.ellipse(cx, cy - s * 0.42, s * 0.74, s * 0.46, 0, Math.PI, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(cx - s * 0.76, cy - s * 0.3); g.quadraticCurveTo(cx - s * 0.3, cy - s * 1.05, cx + s * 0.85, cy - s * 0.55); g.quadraticCurveTo(cx + s * 0.5, cy - s * 0.42, cx + s * 0.2, cy - s * 0.38); g.quadraticCurveTo(cx - s * 0.3, cy - s * 0.4, cx - s * 0.76, cy - s * 0.3); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.ellipse(cx - s * 0.1, cy - s * 0.7, s * 0.35, s * 0.08, -0.2, 0, Math.PI * 2); g.fill(); break;
+    case 7: // ショートボブ（斜めの前髪）
+      g.beginPath(); g.moveTo(cx - s * 0.68, cy - s * 0.1); g.quadraticCurveTo(cx - s * 0.7, cy - s * 0.85, cx, cy - s * 0.82); g.quadraticCurveTo(cx + s * 0.72, cy - s * 0.8, cx + s * 0.68, cy - s * 0.05); g.quadraticCurveTo(cx + s * 0.3, cy - s * 0.55, cx - s * 0.35, cy - s * 0.3); g.closePath(); g.fill(); break;
+    case 8: // なでつけた黒髪（額を出して後ろへ）
+      g.beginPath(); g.ellipse(cx, cy - s * 0.45, s * 0.66, s * 0.4, 0, Math.PI, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(cx - s * 0.62, cy - s * 0.38); g.quadraticCurveTo(cx, cy - s * 0.58, cx + s * 0.62, cy - s * 0.38); g.lineTo(cx + s * 0.6, cy - s * 0.5); g.quadraticCurveTo(cx, cy - s * 0.72, cx - s * 0.6, cy - s * 0.5); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = s * 0.02; for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(cx + i * s * 0.15, cy - s * 0.55); g.lineTo(cx + i * s * 0.18, cy - s * 0.82); g.stroke(); } break;
+    case 9: // 金髪のロングヘア（前髪を左右に分ける）
+      g.beginPath(); g.moveTo(cx - s * 0.74, cy + s * 0.1); g.quadraticCurveTo(cx - s * 0.78, cy - s * 0.85, cx, cy - s * 0.84); g.quadraticCurveTo(cx + s * 0.78, cy - s * 0.85, cx + s * 0.74, cy + s * 0.1); g.quadraticCurveTo(cx + s * 0.55, cy - s * 0.45, cx + s * 0.05, cy - s * 0.55); g.quadraticCurveTo(cx - s * 0.55, cy - s * 0.45, cx - s * 0.74, cy + s * 0.1); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.ellipse(cx - s * 0.35, cy - s * 0.55, s * 0.18, s * 0.06, -0.6, 0, Math.PI * 2); g.fill(); break;
     case 0: // 横分け
       g.beginPath(); g.ellipse(cx, cy - s * 0.42, s * 0.66, s * 0.38, 0, Math.PI, Math.PI * 2); g.fill();
       g.beginPath(); g.moveTo(cx - s * 0.66, cy - s * 0.4); g.quadraticCurveTo(cx - s * 0.1, cy - s * 0.75, cx + s * 0.66, cy - s * 0.25); g.lineTo(cx + s * 0.6, cy - s * 0.5); g.closePath(); g.fill(); break;
@@ -59,8 +102,9 @@ function drawCharacter(g, cx, cy, s, look, mood) {
       g.beginPath(); g.ellipse(cx, cy - s * 0.4, s * 0.66, s * 0.4, 0, Math.PI, Math.PI * 2); g.fill();
       g.beginPath(); g.arc(cx, cy - s * 0.92, s * 0.22, 0, Math.PI * 2); g.fill();
   }
+  if (look.grayTemples) { g.fillStyle = 'rgba(210,210,215,.75)'; g.beginPath(); g.ellipse(cx - s * 0.6, cy - s * 0.22, s * 0.07, s * 0.16, 0.2, 0, Math.PI * 2); g.ellipse(cx + s * 0.6, cy - s * 0.22, s * 0.07, s * 0.16, -0.2, 0, Math.PI * 2); g.fill(); }
   // 眉・目
-  g.strokeStyle = look.hair === '#d8d8dc' ? '#9a9aa2' : look.hair; g.lineWidth = s * 0.06; g.lineCap = 'round';
+  g.strokeStyle = look.hair === '#d8d8dc' ? '#9a9aa2' : /^#e|^#ef/.test(look.hair) ? '#a8823a' : look.hair; g.lineWidth = s * (look.bold ? 0.085 : 0.06); g.lineCap = 'round';
   const brow = mood === 'down' || mood === 'bigdown' ? 0.08 : mood === 'bigup' ? -0.06 : 0;
   g.beginPath(); g.moveTo(cx - s * 0.36, cy - s * 0.2 - brow * s); g.lineTo(cx - s * 0.12, cy - s * 0.22 + brow * s); g.stroke();
   g.beginPath(); g.moveTo(cx + s * 0.36, cy - s * 0.2 - brow * s); g.lineTo(cx + s * 0.12, cy - s * 0.22 + brow * s); g.stroke();
@@ -69,16 +113,28 @@ function drawCharacter(g, cx, cy, s, look, mood) {
     g.lineWidth = s * 0.05; g.strokeStyle = '#1b1b22';
     g.beginPath(); g.arc(cx - s * 0.24, cy - s * 0.04, s * 0.09, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
     g.beginPath(); g.arc(cx + s * 0.24, cy - s * 0.04, s * 0.09, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
-  } else { g.beginPath(); g.arc(cx - s * 0.24, cy - s * 0.06, s * 0.065, 0, Math.PI * 2); g.arc(cx + s * 0.24, cy - s * 0.06, s * 0.065, 0, Math.PI * 2); g.fill(); }
+  } else {
+    if (look.eyes) { g.fillStyle = '#fff'; g.beginPath(); g.ellipse(cx - s * 0.24, cy - s * 0.06, s * 0.1, s * 0.07, 0, 0, Math.PI * 2); g.ellipse(cx + s * 0.24, cy - s * 0.06, s * 0.1, s * 0.07, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = look.eyes; }
+    g.beginPath(); g.arc(cx - s * 0.24, cy - s * 0.06, s * 0.065, 0, Math.PI * 2); g.arc(cx + s * 0.24, cy - s * 0.06, s * 0.065, 0, Math.PI * 2); g.fill();
+    if (look.eyes) { g.fillStyle = '#111'; g.beginPath(); g.arc(cx - s * 0.24, cy - s * 0.06, s * 0.03, 0, Math.PI * 2); g.arc(cx + s * 0.24, cy - s * 0.06, s * 0.03, 0, Math.PI * 2); g.fill(); }
+  }
+  if (look.female) { // まつげ（キリッとした人はアイラインを跳ね上げる）
+    g.strokeStyle = '#1b1b22'; g.lineWidth = s * 0.035;
+    for (const d of [-1, 1]) {
+      const ex = cx + d * s * 0.24, ey = cy - s * 0.06;
+      g.beginPath(); g.moveTo(ex - d * s * 0.1, ey - s * 0.02); g.quadraticCurveTo(ex, ey - s * 0.11, ex + d * s * (look.sharp ? 0.17 : 0.11), ey - s * (look.sharp ? 0.1 : 0.05)); g.stroke();
+    }
+  }
   if (look.glasses) { g.strokeStyle = '#2a2a33'; g.lineWidth = s * 0.035; g.beginPath(); g.arc(cx - s * 0.24, cy - s * 0.06, s * 0.15, 0, Math.PI * 2); g.moveTo(cx + s * 0.39, cy - s * 0.06); g.arc(cx + s * 0.24, cy - s * 0.06, s * 0.15, 0, Math.PI * 2); g.moveTo(cx - s * 0.09, cy - s * 0.08); g.lineTo(cx + s * 0.09, cy - s * 0.08); g.stroke(); }
   // ほっぺ・口ひげ・口
   if (mood === 'up' || mood === 'bigup') { g.fillStyle = 'rgba(255,110,110,.35)'; g.beginPath(); g.arc(cx - s * 0.38, cy + s * 0.18, s * 0.1, 0, Math.PI * 2); g.arc(cx + s * 0.38, cy + s * 0.18, s * 0.1, 0, Math.PI * 2); g.fill(); }
   if (look.mustache) { g.fillStyle = look.hair; g.beginPath(); g.ellipse(cx - s * 0.12, cy + s * 0.24, s * 0.14, s * 0.06, 0.2, 0, Math.PI * 2); g.ellipse(cx + s * 0.12, cy + s * 0.24, s * 0.14, s * 0.06, -0.2, 0, Math.PI * 2); g.fill(); }
-  g.strokeStyle = '#5a2626'; g.lineWidth = s * 0.05;
+  g.strokeStyle = look.lips || '#5a2626'; g.lineWidth = s * (look.lips ? 0.065 : 0.05);
   g.beginPath();
-  if (mood === 'bigup') { g.fillStyle = '#5a2626'; g.arc(cx, cy + s * 0.3, s * 0.2, 0, Math.PI); g.fill(); }
+  if (mood === 'bigup') { g.fillStyle = look.lips || '#5a2626'; g.arc(cx, cy + s * 0.3, s * 0.2, 0, Math.PI); g.fill(); }
   else if (mood === 'up') g.arc(cx, cy + s * 0.22, s * 0.2, Math.PI * 0.15, Math.PI * 0.85);
   else if (mood === 'down' || mood === 'bigdown') g.arc(cx, cy + s * 0.48, s * 0.18, Math.PI * 1.2, Math.PI * 1.8);
+  else if (look.calm) g.arc(cx, cy + s * 0.26, s * 0.14, Math.PI * 0.2, Math.PI * 0.8);
   else { g.moveTo(cx - s * 0.14, cy + s * 0.36); g.lineTo(cx + s * 0.14, cy + s * 0.36); }
   g.stroke();
   // 冷や汗
@@ -96,7 +152,8 @@ function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcT
 // 1人分の絵（キャラクター＋吹き出し＋名札）を作っておく
 function makeSprite(row, s, dpr) {
   const r = seeded(row.code);
-  const look = { skin: pick(r, SKIN), hair: pick(r, HAIR), suit: pick(r, SUIT), style: Math.floor(r() * 6), glasses: r() < 0.3, mustache: r() < 0.2, tie: TIE[row.code] || [pick(r, ['#c0392b', '#2e86de', '#16a085', '#8e44ad', '#d35400'])] };
+  const look = { skin: pick(r, SKIN), hair: pick(r, HAIR), suit: pick(r, SUIT), style: Math.floor(r() * 6), glasses: r() < 0.3, mustache: r() < 0.2, tie: TIE[row.code] || [pick(r, ['#c0392b', '#2e86de', '#16a085', '#8e44ad', '#d35400'])], build: 1 };
+  if (CHARACTERS[row.code]) Object.assign(look, { glasses: false, mustache: false }, CHARACTERS[row.code]);
   const p = row.pct;
   const mood = row.closedNoData ? 'flat' : p == null ? 'flat' : p >= 2 ? 'bigup' : p > 0.05 ? 'up' : p <= -2 ? 'bigdown' : p < -0.05 ? 'down' : 'flat';
   const pool = row.state !== 'open' && Math.random() < 0.35 ? LINES.closed : LINES[mood];
@@ -191,3 +248,4 @@ export function initLeaders(canvas, getRows) {
     refresh() { queue = []; }, // 株価が更新されたら、次に登場する人から新しい表情・セリフになる
   };
 }
+export { makeSprite }; // 見た目の確認用

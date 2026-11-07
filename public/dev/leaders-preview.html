@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#120c26;display:flex;flex-wrap:wrap;gap:10px;padding:10px}</style></head><body>
+<script type="module">
+import { makeSprite } from '../js/leaders.js';
+const rows = [
+  ['US','アメリカ','🇺🇸','S&P 500',0.31],['JP','日本','🇯🇵','日経平均株価',-5.96],['CN','中国','🇨🇳','上海総合',-1.1],['FR','フランス','🇫🇷','CAC 40',-0.81],['IT','イタリア','🇮🇹','FTSE MIB',2.4],
+  ['US','アメリカ','🇺🇸','S&P 500',-2.5],['JP','日本','🇯🇵','日経平均株価',1.2],['CN','中国','🇨🇳','上海総合',0],['FR','フランス','🇫🇷','CAC 40',2.5],['IT','イタリア','🇮🇹','FTSE MIB',-0.5],
+];
+for (const [code,name,flag,idxName,pct] of rows) { const sp = makeSprite({ code, name, flag, idxName, pct, state: 'open' }, 70, 1); sp.c.style.background='rgba(255,255,255,.04)'; document.body.appendChild(sp.c); }
+</script></body></html>
