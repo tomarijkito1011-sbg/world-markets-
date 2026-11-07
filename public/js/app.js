@@ -1,3 +1,4 @@
+import { initSpace } from './space.js';
 import { MARKETS, REGIONS, byId, byCode, groupOf, allSymbols, ASSETS, CITY, LABELED, nextOpening } from './markets.js';
 import { STATIC, ICONS, renderNav, mountSettings, getTheme, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
 
@@ -20,27 +21,8 @@ const MAPC = () => getTheme() === 'light'
 const CAT_COLOR = { index: '#4c8dff', futures: '#a78bfa', options: '#f59e0b', commodities: '#eab308', fx: '#2dd4bf', crypto: '#fb923c' };
 const HEADLINES = ASSETS.map(a => a.headline);
 
-// ── 星空の背景 ──
-(function stars() {
-  const c = $('stars'), ctx = c.getContext('2d');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let pts = [];
-  const resize = () => {
-    const r = c.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
-    c.width = r.width * dpr; c.height = r.height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    pts = Array.from({ length: Math.round(r.width * r.height / 2600) }, () => ({ x: Math.random() * r.width, y: Math.random() * r.height, r: Math.random() * 1.1 + 0.2, p: Math.random() * 6.28 }));
-  };
-  const draw = t => {
-    const r = c.getBoundingClientRect();
-    ctx.clearRect(0, 0, r.width, r.height);
-    const light = getTheme() === 'light';
-    for (const s of pts) { ctx.globalAlpha = (light ? 0.1 : 0.25) + (light ? 0.2 : 0.55) * (0.5 + 0.5 * Math.sin(s.p + t / 1400)); ctx.fillStyle = light ? '#7b93b8' : '#cfe0ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill(); }
-    if (!reduce && !document.hidden) requestAnimationFrame(draw);
-  };
-  resize(); requestAnimationFrame(draw);
-  addEventListener('resize', resize);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && !reduce) requestAnimationFrame(draw); });
-})();
+// ── 宇宙の背景（太陽・惑星・星雲・天の川） ──
+initSpace($('stars'));
 
 const info = m => summarize(m, quotes);
 const marketOf = f => byId[f.id];

@@ -365,3 +365,19 @@ h2.sec .count{font-size:12px;color:var(--muted);font-weight:500}
 .src{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);line-height:1.6}
 .src b{color:var(--text);font-size:13px}
 .sources .foot{margin-top:16px}
+
+/* ── 宇宙の舞台（トップの地球儀の背景） ── */
+.stage{--stage-a:#0c1a36;--stage-b:#060c1c;--stage-c:#020409;color:var(--text)}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 120% 90% at 60% 50%,transparent 55%,rgba(0,0,0,.55) 100%);z-index:1}
+.stage .map-wrap{z-index:2}
+/* ライトモードでも宇宙の部分は暗いまま（文字などをダーク用の色にする） */
+:root[data-wm-theme="light"] .stage{
+  color-scheme:dark;
+  --bg:#0a0e16; --panel:#121826; --panel-2:#171f30; --line:#232c3f; --line-hover:#3a4763; --text:#e6ebf3; --muted:#8c97ab; --soft:#aab4c5;
+  --up:#22c55e; --down:#ef4444; --flat:#9aa4b2; --accent:#4c8dff; --up-text:#86efac; --eyebrow:#7fa6e8;
+  --overlay-bg:rgba(18,24,38,.88); --glass:rgba(255,255,255,.035); --glass-line:rgba(255,255,255,.08); --hairline:rgba(255,255,255,.06);
+  --label-bg:rgba(8,12,22,.78); --label-line:rgba(255,255,255,.14); --sphere:#0f1b2d; --graticule:#1a2740; --country-stroke:#0a0e16; --country-hover:#fff;
+  --panel-fade:rgba(2,4,9,.88); --panel-fade-2:rgba(2,4,9,.6); --panel-fade-0:rgba(2,4,9,0);
+  --legend:linear-gradient(90deg,#ef4444,#5a2d33 40%,#343a46 50%,#24533a 60%,#22c55e);
+  --stage-a:#0c1a36; --stage-b:#060c1c; --stage-c:#020409;
+}
