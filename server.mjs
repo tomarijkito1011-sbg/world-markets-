@@ -178,7 +178,7 @@ async function getShares(symbol) {
   });
 }
 // 100分の1単位の通貨（ペンス・セント・アゴロト）を本来の通貨に直す
-const bgShares = new Set();
+const bgShares = new Set(), sharesTried = new Set();
 const MINOR = { GBp: ['GBP', 100], GBX: ['GBP', 100], ZAc: ['ZAR', 100], ILA: ['ILS', 100] };
 async function getConstituents(index) {
   const list = await loadList(index);
@@ -193,10 +193,10 @@ async function getConstituents(index) {
     if (syms.length <= 600) shares = await pool(syms, 6, s => getShares(s).catch(() => null));
     else {
       shares = syms.map(s => cache.get('sh:' + s)?.data || null);
-      const missing = syms.filter((s, i) => !shares[i]);
+      const missing = syms.filter((s, i) => !shares[i] && !sharesTried.has(s));
       if (missing.length && !bgShares.has(index)) {
         bgShares.add(index);
-        pool(missing, 6, s => getShares(s).catch(() => null)).finally(() => { bgShares.delete(index); cache.delete('k:' + index); });
+        pool(missing, 6, s => getShares(s).catch(() => null).finally(() => sharesTried.add(s))).finally(() => { bgShares.delete(index); cache.delete('k:' + index); });
       }
     }
     const rows = list.items.map((it, k) => {
