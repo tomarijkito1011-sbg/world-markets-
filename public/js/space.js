@@ -4,7 +4,7 @@
 export function initSpace(canvas) {
   const ctx = canvas.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let W = 0, H = 0, dpr = 1, stars = [], layer = null, shoot = null, mx = 0, my = 0, tx = 0, ty = 0;
+  let W = 0, H = 0, dpr = 1, stars = [], layer = null, shoots = [], mx = 0, my = 0, tx = 0, ty = 0;
   const rnd = (a, b) => a + Math.random() * (b - a);
 
   // 天体の位置（キャンバスに対する割合）。d は奥行き（大きいほど遠く、動きが小さい）
@@ -134,16 +134,25 @@ export function initSpace(canvas) {
     }
     ctx.globalAlpha = 1;
     drawBodies(ctx);
-    // ときどき流れ星
+    // 流れ星（方向・速さ・長さ・明るさはすべてランダム。同時に数本流れることもある）
     if (!reduce) {
-      if (!shoot && Math.random() < 0.004) shoot = { x: rnd(W * 0.3, W), y: rnd(0, H * 0.4), vx: rnd(-9, -6), vy: rnd(3, 5), life: 1 };
-      if (shoot) {
-        const g = ctx.createLinearGradient(shoot.x, shoot.y, shoot.x - shoot.vx * 12, shoot.y - shoot.vy * 12);
-        g.addColorStop(0, `rgba(255,255,255,${shoot.life})`); g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.strokeStyle = g; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(shoot.x, shoot.y); ctx.lineTo(shoot.x - shoot.vx * 12, shoot.y - shoot.vy * 12); ctx.stroke();
-        shoot.x += shoot.vx; shoot.y += shoot.vy; shoot.life -= 0.02;
-        if (shoot.life <= 0) shoot = null;
+      if (shoots.length < 5 && Math.random() < 0.018) {
+        const ang = rnd(0, Math.PI * 2), sp = rnd(5, 13);
+        shoots.push({ x: rnd(W * 0.05, W * 0.95), y: rnd(H * 0.05, H * 0.95), vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+          len: rnd(8, 20), w: rnd(0.8, 2.2), life: 1, fade: rnd(0.012, 0.03), hue: Math.random() < 0.75 ? '255,255,255' : ['190,215,255', '255,225,180', '200,255,230'][Math.floor(Math.random() * 3)] });
       }
+      for (const m of shoots) {
+        const ex = m.x - m.vx * m.len, ey = m.y - m.vy * m.len;
+        const g = ctx.createLinearGradient(m.x, m.y, ex, ey);
+        g.addColorStop(0, `rgba(${m.hue},${m.life})`); g.addColorStop(1, `rgba(${m.hue},0)`);
+        ctx.strokeStyle = g; ctx.lineWidth = m.w; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(ex, ey); ctx.stroke();
+        // 先頭の光る点
+        ctx.globalAlpha = m.life; ctx.fillStyle = `rgb(${m.hue})`;
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.w * 1.1, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+        m.x += m.vx; m.y += m.vy; m.life -= m.fade;
+      }
+      shoots = shoots.filter(m => m.life > 0 && m.x > -200 && m.x < W + 200 && m.y > -200 && m.y < H + 200);
     }
   }
   const loop = t => { draw(t); if (!document.hidden) requestAnimationFrame(loop); };
