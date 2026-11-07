@@ -41,7 +41,7 @@ for (const page of ['country.html', 'asset.html']) {
 
 // 株価データ
 const syms = [...new Set([...allSymbols(), ...assetSymbols()])];
-const quotes = await get('/api/quotes?symbols=' + syms.map(encodeURIComponent).join(','));
+const quotes = await get('/api/quotes?world=1&symbols=' + syms.map(encodeURIComponent).join(','));
 await fs.writeFile(path.join(OUT, 'data/quotes.json'), JSON.stringify(quotes));
 let n = 0;
 for (const sym of syms) {

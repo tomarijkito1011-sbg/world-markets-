@@ -39,8 +39,9 @@
     </div>
     <div class="pulse">
       <div>
-        <div class="k">世界の平均（各国の代表指数）</div>
-        <div class="avg"><b id="avg" class="mono">—</b><span id="avg-note" class="muted" style="font-size:12px"></span></div>
+        <div class="k" id="wcap-label">世界の時価総額</div>
+        <div class="wcap"><b id="wcap" class="mono">—</b><span id="wcap-pct" class="wcap-pct mono">—</span></div>
+        <div class="wcap-sub muted" id="wcap-sub"></div>
       </div>
       <div class="breadth" id="breadth" aria-hidden="true"></div>
       <div class="counts"><span><b class="up" id="n-up">—</b>上昇</span><span><b class="flat" id="n-flat">—</b>横ばい</span><span><b class="down" id="n-down">—</b>下落</span></div>
@@ -76,6 +77,7 @@
       <div class="src"><b>TOPIXの指数値</b><span>Yahoo!ファイナンス（日本）のTOPIX（998405）。チャートの線のみ連動ETF（1306）から換算</span></div>
       <div class="src"><b>TOPIXの構成銘柄・ウエイト、日本企業の銘柄名・業種</b><span>日本取引所グループ（JPX）の公式データ</span></div>
       <div class="src"><b>そのほかの指数の構成銘柄</b><span>Wikipedia（日経225・NYダウ・S&amp;P500・FTSE100・DAX など）</span></div>
+      <div class="src"><b>世界の時価総額</b><span>構成銘柄がわかる主要指数（TOPIX・S&amp;P500・FTSE100・DAX・ハンセンなど）の企業の時価総額を、同じ会社を重複させずに合計し、現在の為替レートでドル・円に換算した値。前日比は株価の動きだけを表します。中国本土・台湾・韓国などの企業は含みません</span></div>
       <div class="src"><b>時価総額</b><span>現在値 × 直近の決算で報告された発行済株式数（Yahoo Finance）による概算</span></div>
       <div class="src"><b>世界地図</b><span>Natural Earth（world-atlas）</span></div>
     </div>

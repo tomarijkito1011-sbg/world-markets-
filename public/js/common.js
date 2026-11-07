@@ -92,13 +92,13 @@ export async function fetchConstituents(index) {
   return r.json();
 }
 
-export async function fetchQuotes(symbols) {
+export async function fetchQuotes(symbols, opts = {}) {
   if (STATIC) {
     const r = await fetch('data/quotes.json', { cache: 'no-store' });
     if (!r.ok) throw new Error('quotes ' + r.status);
     return r.json();
   }
-  const q = symbols ? '?symbols=' + symbols.map(encodeURIComponent).join(',') : '';
+  const q = (symbols ? '?symbols=' + symbols.map(encodeURIComponent).join(',') : '?') + (opts.world ? '&world=1' : '');
   const r = await fetch('api/quotes' + q, { cache: 'no-store' });
   if (!r.ok) throw new Error('quotes ' + r.status);
   return r.json();

@@ -222,6 +222,44 @@ async function getConstituents(index) {
   });
 }
 
+// ── 世界の時価総額 ──
+// 構成銘柄がある主要指数（TOPIX・S&P500・FTSE100 など）の企業の時価総額を合計する。
+// 同じ企業は1回だけ数え、各国の通貨は現在の為替レートで米ドルに直してから足す（前日比は株価の動きだけを表す）。
+async function listIndices() {
+  const files = await fs.readdir(path.join(ROOT, 'public/data/constituents')).catch(() => []);
+  const out = [];
+  for (const f of files) { try { out.push(JSON.parse(await fs.readFile(path.join(ROOT, 'public/data/constituents', f), 'utf8')).index); } catch {} }
+  return out;
+}
+async function getWorldCap() {
+  return cached('world', 60_000, async () => {
+    const indices = (await listIndices()).filter(ix => symbolMarket[ix]);
+    const lists = await pool(indices, 4, ix => getConstituents(ix).catch(() => null));
+    const seen = new Map();
+    // 同じ会社を2回数えないための目印: インドの NSE(.NS) と BSE(.BO) は同じ会社、
+    // 種類株（例: Alphabet の Class A と Class C）は社名から「Class ◯」を外して同じ会社とみなす
+    const symKey = r => r.s.replace(/\.BO$/, '.NS');
+    const nameKey = r => (r.n || r.en || '').toLowerCase().replace(/\(?\s*class\s+[a-z]\s*\)?/g, '').replace(/[^a-z0-9\u3040-\u9fff]/g, '') + '|' + r.currency;
+    const names = new Set();
+    for (const d of lists) for (const r of d?.rows || []) {
+      if (r.error || !r.mcap || !r.prev || seen.has(symKey(r))) continue;
+      const nk = nameKey(r); if (nk.length > 4 && names.has(nk)) continue;
+      seen.set(symKey(r), r); names.add(nk);
+    }
+    const curs = [...new Set([...seen.values()].map(r => r.currency).filter(c => c && c !== 'USD'))];
+    const fx = { USD: 1 };
+    await pool(curs, 6, async c => { try { const q = await getQuote(`${c}USD=X`); if (q.price) fx[c] = q.price; } catch {} });
+    let usd = 0, usdPrev = 0, n = 0, skipped = 0;
+    for (const r of seen.values()) {
+      const k = fx[r.currency]; if (!k) { skipped++; continue; }
+      usd += r.mcap * k; usdPrev += (r.mcap / r.price) * r.prev * k; n++;
+    }
+    const jpy = (await getQuote('USDJPY=X').catch(() => null))?.price;
+    return { usd, usdPrev, changeUsd: usd - usdPrev, changePct: usdPrev ? (usd / usdPrev - 1) * 100 : null,
+      jpy: jpy ? usd * jpy : null, changeJpy: jpy ? (usd - usdPrev) * jpy : null, usdjpy: jpy, companies: n, skipped, indices: indices.length };
+  });
+}
+
 // ── HTTP ──
 function send(res, code, body, type = 'application/json; charset=utf-8', extra = {}) {
   res.writeHead(code, { 'Content-Type': type, ...extra });
@@ -241,7 +279,8 @@ const server = http.createServer(async (req, res) => {
     if (u.pathname === '/api/quotes') {
       const syms = u.searchParams.get('symbols')?.split(',').filter(known) || Object.keys(symbolMarket);
       const list = await pool([...new Set(syms)], 8, getQuote);
-      return send(res, 200, { serverTime: Math.floor(Date.now() / 1000), quotes: Object.fromEntries(list.map(q => [q.symbol, q])) }, undefined, { 'Cache-Control': 'no-store' });
+      const world = u.searchParams.get('world') ? await getWorldCap().catch(() => null) : undefined;
+      return send(res, 200, { serverTime: Math.floor(Date.now() / 1000), quotes: Object.fromEntries(list.map(q => [q.symbol, q])), world }, undefined, { 'Cache-Control': 'no-store' });
     }
     if (u.pathname === '/api/constituents') {
       const ix = u.searchParams.get('index');

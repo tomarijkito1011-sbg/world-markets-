@@ -388,3 +388,10 @@ h2.sec .count{font-size:12px;color:var(--muted);font-weight:500}
 /* 世界のリーダーモード: 記者会見場のような深い紫紺の背景 */
 :root[data-wm-theme="leaders"] .stage{--stage-a:#2a1d4a;--stage-b:#120c26;--stage-c:#05040c;--panel-fade:rgba(5,4,12,.94);--panel-fade-2:rgba(5,4,12,.86);--panel-fade-0:rgba(5,4,12,0)}
 @media (max-width:900px){:root[data-wm-theme="leaders"] .panel .pulse{background:rgba(5,4,12,.85)}}
+
+/* ── 世界の時価総額 ── */
+.wcap{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.wcap b{font-family:var(--mono);font-size:clamp(26px,2.6vw,34px);font-weight:600;line-height:1.1;color:var(--text)}
+.wcap-pct{font-size:18px;font-weight:600;padding:2px 8px;border-radius:8px}
+.wcap-pct.up{background:rgba(34,197,94,.14)} .wcap-pct.down{background:rgba(239,68,68,.14)}
+.wcap-sub{font-size:12px;margin-top:4px;line-height:1.6}

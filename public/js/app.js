@@ -6,7 +6,7 @@ import { STATIC, ICONS, renderNav, mountSettings, getTheme, getMode, fetchQuotes
 const $ = id => document.getElementById(id);
 const wrap = $('map-wrap'), tip = $('tip');
 const pointMarkets = MARKETS.filter(m => m.point);
-let quotes = {}, features = [], globe = null, flat = null;
+let quotes = {}, world = null, features = [], globe = null, flat = null;
 let mode = 'globe';
 try { mode = localStorage.getItem('wm-map-mode') || 'globe'; } catch {}
 
@@ -199,13 +199,26 @@ window.addEventListener('wm-theme', () => {
   refreshGlobe(); refreshFlat(); renderList(); renderCats(); renderRanks();
 });
 
+// 大きな金額を「京・兆」で表す（例: 1京6,176兆円）
+function fmtYenBig(v) {
+  const cho = Math.round(v / 1e12);
+  return cho >= 10000 ? `${Math.floor(cho / 10000)}京${(cho % 10000).toLocaleString('ja-JP')}兆円` : `${cho.toLocaleString('ja-JP')}兆円`;
+}
+const fmtYenChg = v => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.abs(v) >= 1e12 ? Math.round(Math.abs(v) / 1e12).toLocaleString('ja-JP') + '兆円' : Math.round(Math.abs(v) / 1e8).toLocaleString('ja-JP') + '億円'}`;
+
 // ── 左側のまとめ ──
 function renderPanel() {
   const rows = MARKETS.map(info).filter(r => r.q?.changePct != null);
   const up = rows.filter(r => r.q.changePct > 0.005).length, down = rows.filter(r => r.q.changePct < -0.005).length, fl = rows.length - up - down;
-  const avg = rows.length ? rows.reduce((a, r) => a + r.q.changePct, 0) / rows.length : null;
-  $('avg').textContent = fmtPct(avg); $('avg').className = 'mono ' + dirClass(avg);
-  $('avg-note').textContent = rows.length ? `${rows.length}市場の単純平均` : '';
+  // 世界の時価総額（主要指数の構成企業の合計）
+  if (world?.usd) {
+    const cls = dirClass(world.changePct);
+    $('wcap').textContent = world.jpy ? fmtYenBig(world.jpy) : `${(world.usd / 1e12).toFixed(1)}兆ドル`;
+    $('wcap-pct').textContent = fmtPct(world.changePct); $('wcap-pct').className = 'wcap-pct mono ' + cls;
+    $('wcap-label').textContent = `世界の時価総額（主要${world.indices}指数の${world.companies.toLocaleString('ja-JP')}社）`;
+    const chg = world.changeJpy != null ? fmtYenChg(world.changeJpy) : `${world.changeUsd >= 0 ? '+' : '−'}${Math.abs(world.changeUsd / 1e12).toFixed(2)}兆ドル`;
+    $('wcap-sub').innerHTML = `約${(world.usd / 1e12).toFixed(1)}兆ドル · 前日比 <span class="${cls}">${chg}</span>`;
+  }
   $('n-up').textContent = up; $('n-down').textContent = down; $('n-flat').textContent = fl;
   const tot = rows.length || 1;
   $('breadth').innerHTML = `<i style="width:${up / tot * 100}%;background:var(--up)"></i><i style="width:${fl / tot * 100}%;background:#4b5563"></i><i style="width:${down / tot * 100}%;background:var(--down)"></i>`;
@@ -248,8 +261,9 @@ function renderRanks() {
 // ── データ更新 ──
 async function refresh() {
   try {
-    const data = await fetchQuotes([...allSymbols(), ...HEADLINES]);
+    const data = await fetchQuotes([...allSymbols(), ...HEADLINES], { world: true });
     quotes = data.quotes;
+    if (data.world) world = data.world;
     $('loading').hidden = true;
     $('src-time').textContent = STATIC ? `価格は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点（約1時間ごとに自動更新）` : '開場中は約15秒ごとに自動更新';
     $('updated').textContent = STATIC ? `株価は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点` : `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', data.serverTime)}`;
