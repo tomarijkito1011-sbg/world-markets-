@@ -68,11 +68,21 @@
 
   <div class="section-head" id="list-head"><h2>世界の株価指数</h2><p id="count"></p></div>
   <div class="region-grid" id="list"></div>
-  <p class="foot">
-    データ: Yahoo Finance（非公式取得）。開場中の市場は約15秒ごとに自動更新します。市場によっては数分〜20分程度遅れることがあります。<br>
-    TOPIXなど一部の指数は、連動するETFの値動きで表示しています。祝日の休場は、株価の更新状況から推定しています。<br>
-    このサイトは情報提供のみを目的としており、投資判断はご自身の責任で行ってください。
-  </p>
+  <section class="sources" id="sources">
+    <div class="section-head"><h2>データの出どころ</h2><p id="src-time"></p></div>
+    <div class="src-grid">
+      <div class="src"><b>株価指数・先物・為替・仮想通貨・商品の価格とチャート</b><span>Yahoo Finance（公開APIではない取得方法。仕様変更で止まる可能性があります）</span></div>
+      <div class="src"><b>TOPIXの指数値</b><span>Yahoo!ファイナンス（日本）のTOPIX（998405）。チャートの線のみ連動ETF（1306）から換算</span></div>
+      <div class="src"><b>TOPIXの構成銘柄・ウエイト、日本企業の銘柄名・業種</b><span>日本取引所グループ（JPX）の公式データ</span></div>
+      <div class="src"><b>そのほかの指数の構成銘柄</b><span>Wikipedia（日経225・NYダウ・S&amp;P500・FTSE100・DAX など）</span></div>
+      <div class="src"><b>時価総額</b><span>現在値 × 直近の決算で報告された発行済株式数（Yahoo Finance）による概算</span></div>
+      <div class="src"><b>世界地図</b><span>Natural Earth（world-atlas）</span></div>
+    </div>
+    <p class="foot">
+      市場によっては数分〜20分程度の遅れがあります。祝日の休場は株価の更新状況から推定しています。TOPIX以外の一部の日本の指数（業種別など）は連動ETFの価格です。<br>
+      このサイトは情報提供のみを目的としており、投資判断はご自身の責任で行ってください。
+    </p>
+  </section>
 </main>
 
 <div class="tip" id="tip"></div>

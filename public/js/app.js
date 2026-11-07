@@ -262,6 +262,7 @@ async function refresh() {
     const data = await fetchQuotes([...allSymbols(), ...HEADLINES]);
     quotes = data.quotes;
     $('loading').hidden = true;
+    $('src-time').textContent = STATIC ? `価格は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点（約1時間ごとに自動更新）` : '開場中は約15秒ごとに自動更新';
     $('updated').textContent = STATIC ? `株価は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点` : `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', data.serverTime)}`;
     refreshGlobe(); refreshFlat(); renderList(); renderPanel(); renderCats(); renderRanks();
   } catch (e) {

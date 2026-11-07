@@ -30,9 +30,20 @@ for (const a of ASSETS) for (const [s] of a.items) symbolAsset[s] = a;
 const known = s => !!(symbolMarket[s] || symbolAsset[s]);
 
 // ── Yahoo Finance ──
+// query1 が失敗したときは query2（同じ内容の別サーバー）で取り直す
+async function yfetch(pathQuery) {
+  let last;
+  for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
+    try {
+      const r = await fetch(`https://${host}${pathQuery}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12_000) });
+      if (r.status >= 500 || r.status === 429) { last = new Error(`HTTP ${r.status}`); continue; }
+      return r;
+    } catch (e) { last = e; }
+  }
+  throw last;
+}
 async function yahooChart(symbol, range, interval) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=false`;
-  const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10_000) });
+  const r = await yfetch(`/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=false`);
   const j = await r.json().catch(() => null);
   const res = j?.chart?.result?.[0];
   if (!res) throw new Error(j?.chart?.error?.description || `HTTP ${r.status}`);
@@ -140,8 +151,7 @@ async function loadList(index) {
 }
 // 複数銘柄の価格を一度に取得（spark は1回に最大20銘柄）
 async function sparkBatch(symbols) {
-  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbols.map(encodeURIComponent).join(',')}&range=1d&interval=1d`;
-  const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
+  const r = await yfetch(`/v7/finance/spark?symbols=${symbols.map(encodeURIComponent).join(',')}&range=1d&interval=1d`);
   const j = await r.json();
   const out = {};
   for (const it of j?.spark?.result || []) {
@@ -153,19 +163,19 @@ async function sparkBatch(symbols) {
 }
 // 発行済株式数（四半期→年次の順に最新値）。1日キャッシュ
 // 株式数はファイルにも保存して、サーバーを再起動しても取り直さなくて済むようにする
-const SHARES_FILE = path.join(ROOT, '.cache/shares.json');
+const SHARES_FILE = path.join(ROOT, 'data/shares.json');
+const SHARES_TTL = 30 * 86400_000; // 発行済株式数はめったに変わらないので30日使う
 let shareStore = {};
 try { shareStore = JSON.parse(await fs.readFile(SHARES_FILE, 'utf8')); } catch {}
-for (const [k, v] of Object.entries(shareStore)) if (Date.now() - v.t < 7 * 86400_000) cache.set('sh:' + k, { t: v.t, data: v.data });
+for (const [k, v] of Object.entries(shareStore)) if (Date.now() - v.t < SHARES_TTL) cache.set('sh:' + k, { t: v.t, data: v.data });
 let saveTimer = null;
-const saveShares = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => fs.mkdir(path.dirname(SHARES_FILE), { recursive: true }).then(() => fs.writeFile(SHARES_FILE, JSON.stringify(shareStore))).catch(() => {}), 3000); };
+const saveShares = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => fs.mkdir(path.dirname(SHARES_FILE), { recursive: true }).then(() => fs.writeFile(SHARES_FILE, JSON.stringify(shareStore, null, 0))).catch(() => {}), 3000); };
 async function getShares(symbol) {
   const c = cache.get('sh:' + symbol);
-  if (c?.data && Date.now() - c.t < 24 * 3600_000) return c.data;
-  return cached('sh:' + symbol, 24 * 3600_000, async () => {
+  if (c?.data && Date.now() - c.t < SHARES_TTL) return c.data;
+  return cached('sh:' + symbol, SHARES_TTL, async () => {
     const now = Math.floor(Date.now() / 1000);
-    const url = `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}?type=quarterlyOrdinarySharesNumber,annualOrdinarySharesNumber&period1=${now - 3 * 365 * 86400}&period2=${now}`;
-    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
+    const r = await yfetch(`/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}?type=quarterlyOrdinarySharesNumber,annualOrdinarySharesNumber&period1=${now - 3 * 365 * 86400}&period2=${now}`);
     const j = await r.json();
     let best = null;
     for (const res of j?.timeseries?.result || []) {
