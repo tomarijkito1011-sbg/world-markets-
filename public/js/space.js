@@ -155,17 +155,17 @@ export function initSpace(canvas) {
       shoots = shoots.filter(m => m.life > 0 && m.x > -200 && m.x < W + 200 && m.y > -200 && m.y < H + 200);
     }
   }
-  const loop = t => { draw(t); if (!document.hidden) requestAnimationFrame(loop); };
+  let running = false;
+  const loop = t => { if (!running) return; draw(t); if (!document.hidden) requestAnimationFrame(loop); };
 
-  resize();
-  addEventListener('resize', resize);
-  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
-  if (!reduce) {
-    canvas.parentElement.addEventListener('pointermove', e => {
-      const r = canvas.getBoundingClientRect();
-      mx = ((e.clientX - r.left) / r.width - 0.5) * -24; my = ((e.clientY - r.top) / r.height - 0.5) * -16;
-    });
-    requestAnimationFrame(loop);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) requestAnimationFrame(loop); });
-  }
+  addEventListener('resize', () => { if (running) resize(); });
+  if (!reduce) canvas.parentElement.addEventListener('pointermove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = ((e.clientX - r.left) / r.width - 0.5) * -24; my = ((e.clientY - r.top) / r.height - 0.5) * -16;
+  });
+  document.addEventListener('visibilitychange', () => { if (running && !document.hidden && !reduce) requestAnimationFrame(loop); });
+  return {
+    start() { if (running) return; running = true; canvas.hidden = false; resize(); if (!reduce) requestAnimationFrame(loop); },
+    stop() { running = false; canvas.hidden = true; },
+  };
 }

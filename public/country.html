@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-title" content="World Markets">
 </head>
 <body>
-<script>try{document.documentElement.dataset.wmTheme=localStorage.getItem('wm-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.wmTheme='dark'}</script>
+<script>try{document.documentElement.dataset.wmTheme=(function(m){return m==='light'||m==='leaders'?m:'dark'})(localStorage.getItem('wm-theme'))}catch(e){document.documentElement.dataset.wmTheme='dark'}</script>
 <header class="topbar">
   <a class="back" href="index.html">← 世界地図へ戻る</a>
   <a class="brand" href="index.html"><span class="logo">🌍</span><span>World Markets<small>世界の株式市場を一目で</small></span></a>

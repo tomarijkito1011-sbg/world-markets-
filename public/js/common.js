@@ -29,7 +29,10 @@ export function colorFor(pct) {
 }
 
 // ── 表示テーマ（ライト／ダーク） ──
-export function getTheme() { return document.documentElement.dataset.wmTheme === 'light' ? 'light' : 'dark'; }
+// 画面のモード: light / dark / leaders（世界のリーダーモード。色はダークと同じで、トップの背景だけ変わる）
+export const MODES = ['light', 'dark', 'leaders'];
+export function getMode() { const m = document.documentElement.dataset.wmTheme; return MODES.includes(m) ? m : 'dark'; }
+export function getTheme() { return getMode() === 'light' ? 'light' : 'dark'; }
 export function setTheme(t) {
   document.documentElement.dataset.wmTheme = t;
   try { localStorage.setItem('wm-theme', t); } catch {}
@@ -50,10 +53,12 @@ export function mountSettings(el) {
       <div class="theme-opts" role="radiogroup" aria-label="画面の色">
         <button class="theme-opt" role="radio" data-t="light"><div class="sw light"><i></i><i></i><i></i></div><span>ライトモード</span></button>
         <button class="theme-opt" role="radio" data-t="dark"><div class="sw dark"><i></i><i></i><i></i></div><span>ダークモード</span></button>
+        <button class="theme-opt" role="radio" data-t="leaders"><div class="sw leaders"><b>🙂</b><b>😅</b><b>😄</b></div><span>世界のリーダー</span></button>
       </div>
+      <p class="menu-note">世界のリーダーモードでは、トップの背景を各国の「首相」「大統領」が流れていきます（実在の人物ではない架空のキャラクターです）。株価が上がった国は笑顔、下がった国は冷や汗をかきます。</p>
     </div>`;
   const btn = el.querySelector('#gear'), menu = el.querySelector('#settings-menu');
-  const sync = () => el.querySelectorAll('.theme-opt').forEach(b => b.setAttribute('aria-checked', String(b.dataset.t === getTheme())));
+  const sync = () => el.querySelectorAll('.theme-opt').forEach(b => b.setAttribute('aria-checked', String(b.dataset.t === getMode())));
   const open = v => { menu.hidden = !v; btn.setAttribute('aria-expanded', String(v)); };
   btn.onclick = e => { e.stopPropagation(); open(menu.hidden); };
   el.querySelectorAll('.theme-opt').forEach(b => b.onclick = () => { setTheme(b.dataset.t); sync(); });

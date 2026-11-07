@@ -1,6 +1,7 @@
 import { initSpace } from './space.js';
+import { initLeaders } from './leaders.js';
 import { MARKETS, REGIONS, byId, byCode, groupOf, allSymbols, ASSETS, CITY, LABELED, nextOpening } from './markets.js';
-import { STATIC, ICONS, renderNav, mountSettings, getTheme, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
+import { STATIC, ICONS, renderNav, mountSettings, getTheme, getMode, fetchQuotes, summarize, colorFor, fmtNum, fmtPct, fmtChg, dirClass, flag, esc, timeIn, dateTimeIn, freshness, sparkSVG, badge, startClock, REFRESH_MS } from './common.js';
 
 const $ = id => document.getElementById(id);
 const wrap = $('map-wrap'), tip = $('tip');
@@ -21,8 +22,13 @@ const MAPC = () => getTheme() === 'light'
 const CAT_COLOR = { index: '#4c8dff', futures: '#a78bfa', options: '#f59e0b', commodities: '#eab308', fx: '#2dd4bf', crypto: '#fb923c' };
 const HEADLINES = ASSETS.map(a => a.headline);
 
-// ── 宇宙の背景（太陽・惑星・星雲・天の川） ──
-initSpace($('stars'));
+// ── トップの背景: 宇宙（太陽・惑星・星雲・天の川）か、世界のリーダーの行進 ──
+const space = initSpace($('stars'));
+// リーダーに渡す各国の情報（国旗・国名・代表指数・前日比・取引状態）
+const leaderRows = () => MARKETS.map(m => { const r = info(m); return { code: m.code, name: m.name, flag: flag(m.code), idxName: r.idxName, pct: r.q?.changePct ?? null, state: r.status.state }; });
+const leaders = initLeaders($('leaders'), leaderRows);
+function applyBackdrop() { if (getMode() === 'leaders') { space.stop(); leaders.start(); } else { leaders.stop(); space.start(); } }
+// 最初の表示は、下の main() で準備が整ってから始める
 
 const info = m => summarize(m, quotes);
 const marketOf = f => byId[f.id];
@@ -188,6 +194,7 @@ function renderList() {
 
 // テーマが変わったら、CSSで変えられない地図・地球儀・カードの色を塗り直す
 window.addEventListener('wm-theme', () => {
+  applyBackdrop();
   if (globe) { const c = MAPC(); globe.globeMaterial().color.set(c.globe); globe.atmosphereColor(c.atmo).polygonSideColor(globe.polygonSideColor()).polygonStrokeColor(globe.polygonStrokeColor()); }
   refreshGlobe(); refreshFlat(); renderList(); renderCats(); renderRanks();
 });
@@ -246,7 +253,7 @@ async function refresh() {
     $('loading').hidden = true;
     $('src-time').textContent = STATIC ? `価格は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点（約1時間ごとに自動更新）` : '開場中は約15秒ごとに自動更新';
     $('updated').textContent = STATIC ? `株価は ${dateTimeIn('Asia/Tokyo', new Date(data.serverTime * 1000))} 時点` : `自動更新中（15秒ごと）· 最終 ${timeIn('Asia/Tokyo', data.serverTime)}`;
-    refreshGlobe(); refreshFlat(); renderList(); renderPanel(); renderCats(); renderRanks();
+    refreshGlobe(); refreshFlat(); renderList(); renderPanel(); renderCats(); renderRanks(); leaders.refresh();
   } catch (e) {
     $('updated').textContent = '更新に失敗しました。再試行します…';
   }
@@ -256,6 +263,7 @@ async function refresh() {
   const topo = await (await fetch('vendor/countries-110m.json')).json();
   features = topojson.feature(topo, topo.objects.countries).features.filter(f => f.id !== '010'); // 南極を除く
   renderList(); renderPanel(); renderCats(); renderRanks();
+  applyBackdrop();
   setMode(mode);
   setInterval(renderPanel, 60_000);
   await refresh();

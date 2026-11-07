@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-title" content="World Markets">
 </head>
 <body>
-<script>try{document.documentElement.dataset.wmTheme=localStorage.getItem('wm-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.wmTheme='dark'}</script>
+<script>try{document.documentElement.dataset.wmTheme=(function(m){return m==='light'||m==='leaders'?m:'dark'})(localStorage.getItem('wm-theme'))}catch(e){document.documentElement.dataset.wmTheme='dark'}</script>
 <header class="topbar">
   <a class="brand" href="index.html"><span class="logo">🌍</span><span>World Markets<small>世界の株式市場を一目で</small></span></a>
   <div class="spacer"></div>
@@ -28,6 +28,7 @@
 
 <section class="stage">
   <canvas id="stars" aria-hidden="true"></canvas>
+  <canvas id="leaders" aria-hidden="true" hidden></canvas>
   <div class="panel">
     <div class="eyebrow"><span class="live-dot"></span>Global Market Pulse</div>
     <h1><span class="nw">世界の相場を、</span><br><em class="nw">ひと目で。</em></h1>
