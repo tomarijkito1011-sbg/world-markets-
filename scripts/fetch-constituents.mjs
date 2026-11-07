@@ -115,7 +115,36 @@ async function buildTopix() {
   console.log('OK  998405.T', items.length, items.slice(0, 3).map(i => `${i.s}:${i.n}`).join(' / '));
 }
 
+// 東証グロース市場250指数・東証スタンダード市場TOP20: JPX の「定期選定結果及び構成銘柄一覧」(PDF) から作る
+// （PDF を文字に直すため pdftotext が必要。銘柄名・業種は JPX の上場銘柄一覧で補う）
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
+async function jpxPdfText(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (WorldMarkets dashboard)' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
+  const tmp = path.join(os.tmpdir(), 'wm-' + Date.now() + '.pdf');
+  fs.writeFileSync(tmp, Buffer.from(await r.arrayBuffer()));
+  try { return execFileSync('pdftotext', ['-layout', tmp, '-'], { encoding: 'utf8' }); } finally { fs.rmSync(tmp, { force: true }); }
+}
+const asOfFrom = t => { const m = t.match(/定期選定\((\d{4})年(\d{1,2})月(\d{1,2})日実施/); return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : today; };
+const listFrom = sec => [...sec.matchAll(/(?:^|\s)(\d{1,3})\s+(\d{3}[0-9A-Z])\s+(.+?)(?=\s+\d{1,3}\s+\d{3}[0-9A-Z]\s|\s*$)/gm)]
+  .map(([, , code, n]) => ({ s: code + '.T', code, n: (jpx[code]?.n || n).normalize('NFKC').trim(), sector: jpx[code]?.sector }));
+async function buildJpxPdfIndices() {
+  // 東証グロース市場250指数
+  const g = await jpxPdfText('https://www.jpx.co.jp/markets/indices/line-up/files/mei2_31_mothers.pdf');
+  const gItems = listFrom(g.slice(g.indexOf('2.指数構成銘柄')));
+  fs.writeFileSync(path.join(OUT, safe('2516.T') + '.json'), JSON.stringify({ index: '2516.T', name: '東証グロース市場250指数', source: '日本取引所グループ（JPX総研）「東証グロース市場250指数 構成銘柄一覧」', asOf: asOfFrom(g), items: gItems }));
+  console.log('OK  2516.T', gItems.length, gItems.slice(0, 3).map(i => `${i.s}:${i.n}`).join(' / '));
+  // 東証スタンダード市場TOP20（同じ PDF に東証グロース市場Core指数も載っているので、その手前まで）
+  const t = await jpxPdfText('https://www.jpx.co.jp/markets/indices/line-up/files/mei2_27_gcore_top20.pdf');
+  const s0 = t.indexOf('（２）指数構成銘柄'), s1 = t.indexOf('2. 東証グロース市場Core指数');
+  const sItems = listFrom(t.slice(s0, s1 > s0 ? s1 : undefined));
+  fs.writeFileSync(path.join(OUT, safe('1551.T') + '.json'), JSON.stringify({ index: '1551.T', name: '東証スタンダード市場TOP20', source: '日本取引所グループ（JPX総研）「東証スタンダード市場TOP20 構成銘柄一覧」', asOf: asOfFrom(t), items: sItems }));
+  console.log('OK  1551.T', sItems.length, sItems.slice(0, 3).map(i => `${i.s}:${i.n}`).join(' / '));
+}
+
 const only = process.env.ONLY?.split(',');
+if (!only || only.includes('2516.T') || only.includes('1551.T')) await buildJpxPdfIndices().catch(e => console.log('NG  JPX PDF', e.message));
 if (!only || only.includes('998405.T')) await buildTopix().catch(e => console.log('NG  998405.T', e.message));
 for (const src of SOURCES) {
   if (only && !only.includes(src.index)) continue;
